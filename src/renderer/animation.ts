@@ -25,8 +25,8 @@ function renderScoreBar(
 
   // We need to build a list of values for the animation
   // To keep the animation size small, we only sample every N frames, same as the snakes
-  const maxFrames = 300;
-  const step = Math.max(1, Math.floor(result.frames.length / maxFrames));
+  // Never skip frames to prevent diagonal jumping artifacts
+  const step = 1;
   
   const values1: string[] = [];
   const values2: string[] = [];
@@ -210,8 +210,8 @@ function renderAnimatedSnakes(result: GameResult, config: RenderConfig, totalDur
   
   const keyTimes: string[] = [];
 
-  const maxFrames = 300;
-  const step = Math.max(1, Math.floor(result.frames.length / maxFrames));
+  // Never skip frames to prevent diagonal jumping artifacts
+  const step = 1;
   
   let sampledCount = 0;
   for (let i = 0; i < result.frames.length; i += step) {
@@ -343,8 +343,8 @@ export function renderAnimatedSVG(
   const totalHeight = gridHeightPx + 46;
   const totalWidth = gridWidthPx;
 
-  // 500ms per turn → 600 turns × 500ms = 300s ≈ 5 minutes
-  const durationPerTurn = 500;
+  // 100ms per turn → 3000 turns × 100ms = 300s = 5 minutes
+  const durationPerTurn = 100;
   // Add a 3 second pause at the end
   const pauseDurationMs = 3000;
   

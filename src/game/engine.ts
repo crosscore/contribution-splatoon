@@ -66,8 +66,8 @@ export function runGame(
   });
 
   let turn = 0;
-  // Let the game run for a fixed number of turns (e.g., 600) to ensure a good length for the animation.
-  const maxTurns = 600;
+  // 3000 turns at 100ms/turn = 300s (5 minutes)
+  const maxTurns = 3000;
 
   while (turn < maxTurns) {
     turn++;
