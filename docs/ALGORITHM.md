@@ -8,16 +8,16 @@ Each snake makes decisions every turn using a multi-layered heuristic system. Th
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                     chooseDirection()                         │
+│                    chooseDirection()                         │
 │                                                              │
-│  ┌──────────────┐   ┌──────────────┐   ┌──────────────────┐ │
-│  │ Loop         │   │ Stagnation   │   │ Strategy         │ │
-│  │ Detection    │──▶│ ε-Greedy     │──▶│ Evaluation       │ │
-│  │ (period 2-4) │   │ (0.5%~15%)   │   │ (9 factors)      │ │
-│  └──────────────┘   └──────────────┘   └──────────────────┘ │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────────┐  │
+│  │ Loop         │   │ Stagnation   │   │ Strategy         │  │
+│  │ Detection    │──▶│ ε-Greedy     │──▶│ Evaluation       │  │
+│  │ (period 2-4) │   │ (0.5%~15%)   │   │ (9 factors)      │  │
+│  └──────────────┘   └──────────────┘   └──────────────────┘  │
 │         │                  │             │           │       │
-│    Force random       Force random   Normal mode  Nav mode  │
-│    if cycling         if stagnant   (8 factors)  (+BFS nav) │
+│    Force random       Force random   Normal mode  Nav mode   │
+│    if cycling         if stagnant   (8 factors)  (+BFS nav)  │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -150,18 +150,18 @@ With this algorithm, the snakes consistently achieve:
 
 ```
 engine.ts                    solver/index.ts
-┌──────────────────┐        ┌──────────────────────────┐
+┌──────────────────┐        ┌───────────────────────────┐
 │ Game Loop        │        │ chooseDirection()         │
-│                  │        │                          │
-│ For each turn:   │        │ 1. detectLoop()          │
-│  track stagnation├───────▶│ 2. ε-greedy check        │
-│  call solver     │        │ 3. aggressiveStrategy()  │
-│  update grid     │        │    ├─ BFS scoring        │
+│                  │        │                           │
+│ For each turn:   │        │ 1. detectLoop()           │
+│  track stagnation├───────▶│ 2. ε-greedy check         │
+│  call solver     │        │ 3. aggressiveStrategy()   │
+│  update grid     │        │    ├─ BFS scoring         │
 │  record frame    │        │    ├─ frontier bonus      │
 │                  │        │    ├─ compass             │
 └──────────────────┘        │    ├─ escape check        │
                             │    ├─ opponent avoidance  │
                             │    ├─ sweep + edge        │
                             │    └─ nav mode (BFS path) │
-                            └──────────────────────────┘
+                            └───────────────────────────┘
 ```
