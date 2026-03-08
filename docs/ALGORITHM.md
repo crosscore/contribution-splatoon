@@ -7,18 +7,18 @@
 Each snake makes decisions every turn using a multi-layered heuristic system. The algorithm balances **efficient local painting** with **global exploration**, while avoiding common pathological behaviors like chase-loops and dead-end trapping.
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    chooseDirection()                     │
-│                                                         │
-│  ┌──────────────┐   ┌──────────────┐   ┌─────────────┐ │
-│  │ Loop         │   │ Stagnation   │   │ Strategy    │ │
-│  │ Detection    │──▶│ ε-Greedy     │──▶│ Evaluation  │ │
-│  │ (period 2-4) │   │ (3%~50%)     │   │ (7 factors) │ │
-│  └──────────────┘   └──────────────┘   └─────────────┘ │
-│         │                  │                  │         │
-│    Force random       Force random      Best scored     │
-│    if cycling         if stagnant         move          │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                     chooseDirection()                         │
+│                                                              │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────────┐ │
+│  │ Loop         │   │ Stagnation   │   │ Strategy         │ │
+│  │ Detection    │──▶│ ε-Greedy     │──▶│ Evaluation       │ │
+│  │ (period 2-4) │   │ (3%~50%)     │   │ (9 factors)      │ │
+│  └──────────────┘   └──────────────┘   └──────────────────┘ │
+│         │                  │             │           │       │
+│    Force random       Force random   Normal mode  Nav mode  │
+│    if cycling         if stagnant   (8 factors)  (+BFS nav) │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 ## Decision Pipeline
@@ -45,7 +45,7 @@ This ensures the snake moves efficiently when actively painting but injects incr
 
 ### 3. Multi-Factor Move Scoring
 
-When not forced into a random move, each valid direction is scored using 8 weighted heuristics:
+When not forced into a random move, each valid direction is scored using 9 weighted heuristics:
 
 #### Factor 1: Distance-Decayed BFS (Paintable Score)
 
@@ -107,6 +107,19 @@ A small bonus for continuing in the current heading direction, producing cleaner
 
 A minor penalty for moving to grid edges, subtly encouraging interior exploration.
 
+#### Factor 9: Long-Range Navigation (+30 / -10)
+
+**"Nav Mode"** activates when the BFS paintable score from the snake's current position is below 1.0, meaning the snake is surrounded by its own territory with no nearby targets.
+
+In nav mode:
+- A full-grid BFS finds the **nearest unpainted or enemy cell** and traces the shortest path back to the snake
+- The direction of the **first step** on that shortest path receives a **+30 bonus**
+- All other directions receive a **-10 penalty**
+- The recently-visited penalty window extends from 15 to **30 steps** to prevent backtracking
+- The recently-visited penalty itself increases (-8 → **-15**)
+
+This eliminates the "circling in own territory" problem: instead of wandering aimlessly when all nearby cells are painted, the snake marches purposefully toward the nearest target. The ε-greedy mechanism still provides natural variation.
+
 ### Final Score
 
 ```
@@ -118,6 +131,7 @@ score = BFS_paintable
       + opponent_avoidance
       + sweep_bonus
       + edge_penalty
+      + nav_bonus           ← NEW (Factor 9)
       + random_jitter(0, 0.5)
 ```
 

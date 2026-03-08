@@ -22,7 +22,7 @@ Unlike the classic [Platane/snk](https://github.com/Platane/snk) (single snake e
 
 - **Two competing snakes** — starting from opposite corners of the grid
 - **Territory painting** — each snake claims cells in Hot Pink or Cyan
-- **Competitive AI** — 8 heuristic factors + stagnation-aware ε-greedy exploration
+- **Competitive AI** — 9 heuristic factors + stagnation-aware ε-greedy exploration
 - **Score display** — live territory percentage bar
 - **Dark mode support** — separate palettes for light/dark themes
 
@@ -37,6 +37,7 @@ Each snake evaluates moves using a **multi-factor scoring system** that balances
 | Global compass | +10 | Head toward unexplored regions |
 | Opponent avoidance | +10/−8 | Separate snakes for coverage |
 | Escape route check | −5/−20 | Avoid dead-ends |
+| Long-range navigation | +30/−10 | March toward nearest target when stuck |
 | Loop detection | force random | Break positional cycles |
 | Stagnation ε-greedy | 3%→50% | Increasing randomness when stuck |
 

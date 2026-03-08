@@ -121,15 +121,26 @@ function aggressiveStrategy(
 
   const heading = getHeading(snake);
 
-  // Build a set of recently-visited positions (last 15) to penalize cycling
+  // Pre-compute a sample BFS to determine if we're in "nav mode"
+  // (surrounded by own territory with no nearby paintable cells)
+  const samplePaintable = countReachableWeighted(snake.position, grid, snake.id);
+  const inNavMode = samplePaintable < 1.0;
+
+  // In nav mode, extend the recently-visited window to avoid revisiting
+  const recentWindow = inNavMode ? 30 : 15;
   const recentSet = new Set<string>();
-  const recentLen = Math.min(snake.trail.length, 15);
+  const recentLen = Math.min(snake.trail.length, recentWindow);
   for (let i = snake.trail.length - recentLen; i < snake.trail.length; i++) {
     if (i >= 0) recentSet.add(`${snake.trail[i].x},${snake.trail[i].y}`);
   }
 
   // Compute direction toward nearest unpainted cluster (global compass)
   const unpaintedDir = findUnpaintedDirection(snake.position, grid, snake.id);
+
+  // Long-range navigation: find shortest path to nearest target cell
+  const navDirection = inNavMode
+    ? findNearestTargetDirection(snake.position, grid, snake.id)
+    : null;
 
   for (const dir of validMoves) {
     const nextPos = getNextPosition(snake.position, dir);
@@ -154,10 +165,10 @@ function aggressiveStrategy(
       compassBonus = 10;
     }
 
-    // 4. Recently-visited penalty
+    // 4. Recently-visited penalty (stronger in nav mode)
     let recentPenalty = 0;
     if (recentSet.has(`${nextPos.x},${nextPos.y}`)) {
-      recentPenalty = -8;
+      recentPenalty = inNavMode ? -15 : -8;
     }
 
     // 5. Escape route check
@@ -200,6 +211,12 @@ function aggressiveStrategy(
       }
     }
 
+    // 9. Long-range navigation: strong bonus for heading toward nearest target
+    let navBonus = 0;
+    if (inNavMode && navDirection) {
+      navBonus = dir === navDirection ? 30 : -10;
+    }
+
     const score =
       paintableScore +
       frontierBonus +
@@ -209,6 +226,7 @@ function aggressiveStrategy(
       sweepBonus +
       edgePenalty +
       opponentBonus +
+      navBonus +
       Math.random() * 0.5;
 
     if (score > bestScore) {
@@ -238,13 +256,21 @@ function balancedStrategy(
 
   const heading = getHeading(snake);
 
+  // Pre-compute nav mode detection
+  const samplePaintable = countReachableWeighted(snake.position, grid, snake.id);
+  const inNavMode = samplePaintable < 1.0;
+
+  const recentWindow = inNavMode ? 30 : 15;
   const recentSet = new Set<string>();
-  const recentLen = Math.min(snake.trail.length, 15);
+  const recentLen = Math.min(snake.trail.length, recentWindow);
   for (let i = snake.trail.length - recentLen; i < snake.trail.length; i++) {
     if (i >= 0) recentSet.add(`${snake.trail[i].x},${snake.trail[i].y}`);
   }
 
   const unpaintedDir = findUnpaintedDirection(snake.position, grid, snake.id);
+  const navDirection = inNavMode
+    ? findNearestTargetDirection(snake.position, grid, snake.id)
+    : null;
 
   for (const dir of validMoves) {
     const nextPos = getNextPosition(snake.position, dir);
@@ -271,7 +297,7 @@ function balancedStrategy(
 
     let recentPenalty = 0;
     if (recentSet.has(`${nextPos.x},${nextPos.y}`)) {
-      recentPenalty = -6;
+      recentPenalty = inNavMode ? -12 : -6;
     }
 
     const escapeCount = countReachableShort(nextPos, grid, 5);
@@ -298,6 +324,12 @@ function balancedStrategy(
       }
     }
 
+    // Long-range navigation bonus
+    let navBonus = 0;
+    if (inNavMode && navDirection) {
+      navBonus = dir === navDirection ? 25 : -8;
+    }
+
     const score =
       paintable +
       centerBonus +
@@ -307,6 +339,7 @@ function balancedStrategy(
       escapePenalty +
       sweepBonus +
       opponentBonus +
+      navBonus +
       Math.random() * 0.5;
 
     if (score > bestScore) {
@@ -377,6 +410,76 @@ function findUnpaintedDirection(
   } else if (Math.abs(dy) > 0) {
     return dy > 0 ? Direction.Down : Direction.Up;
   }
+  return null;
+}
+
+/**
+ * Find the direction of the first step on the shortest path to the nearest
+ * unpainted or enemy cell. Used in "nav mode" when the snake is surrounded
+ * by its own territory and needs to march purposefully toward a target
+ * rather than wandering aimlessly.
+ *
+ * Uses BFS from the snake's current position, tracking the first step taken
+ * to reach each cell. Returns the direction of that first step for the
+ * nearest target cell found.
+ */
+function findNearestTargetDirection(
+  pos: Position,
+  grid: Grid,
+  snakeId: CellOwner.Snake1 | CellOwner.Snake2
+): Direction | null {
+  const visited = new Set<string>();
+  // Each entry tracks position, depth, and the direction of the FIRST step
+  const queue: { pos: Position; depth: number; firstDir: Direction }[] = [];
+  let queueHead = 0;
+
+  visited.add(`${pos.x},${pos.y}`);
+
+  const directions = [
+    Direction.Up,
+    Direction.Down,
+    Direction.Left,
+    Direction.Right,
+  ];
+
+  // Seed the queue with the 4 immediate neighbors
+  for (const dir of directions) {
+    const next = getNextPosition(pos, dir);
+    if (!isInBounds(next, grid)) continue;
+    const key = `${next.x},${next.y}`;
+    if (visited.has(key)) continue;
+    visited.add(key);
+
+    const owner = grid.cells[next.x][next.y].owner;
+    // Found a target immediately adjacent
+    if (owner !== snakeId) {
+      return dir;
+    }
+
+    queue.push({ pos: next, depth: 1, firstDir: dir });
+  }
+
+  // BFS outward — search entire grid if needed
+  while (queueHead < queue.length) {
+    const { pos: current, depth, firstDir } = queue[queueHead++];
+
+    for (const dir of directions) {
+      const next = getNextPosition(current, dir);
+      const key = `${next.x},${next.y}`;
+
+      if (!isInBounds(next, grid) || visited.has(key)) continue;
+      visited.add(key);
+
+      const owner = grid.cells[next.x][next.y].owner;
+      // Found a target: return the first step direction that led here
+      if (owner !== snakeId) {
+        return firstDir;
+      }
+
+      queue.push({ pos: next, depth: depth + 1, firstDir });
+    }
+  }
+
   return null;
 }
 
