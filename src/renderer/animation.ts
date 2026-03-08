@@ -50,7 +50,7 @@ function renderScoreBar(
     text1.push(`🐍 ${pct1}%`);
     text2.push(`🐍 ${pct2}%`);
     
-    keyTimes.push((sampledCount / (result.frames.length / step)).toFixed(3));
+    keyTimes.push((sampledCount / (result.frames.length / step)).toFixed(6));
     sampledCount++;
   }
 
@@ -66,7 +66,7 @@ function renderScoreBar(
   values2.push(lastW2.toFixed(1));
   text1.push(`🐍 ${lastPct1}%`);
   text2.push(`🐍 ${lastPct2}%`);
-  keyTimes.push("1.000");
+  keyTimes.push("1.000000");
 
   const valStr1 = values1.join(";");
   const valStr2 = values2.join(";");
@@ -150,18 +150,18 @@ function renderBaseGrid(result: GameResult, config: RenderConfig, totalDurationS
         //   t=1.000 → last painted color (hold until end)
 
         const values: string[] = [initialColor];
-        const keyTimes: string[] = ["0.000"];
+        const keyTimes: string[] = ["0.000000"];
 
         let currentColor = initialColor;
         for (let j = 0; j < events.length; j++) {
           const event = events[j];
           const tVal = event.turn / totalFrames;
-          const tFixed = parseFloat(tVal.toFixed(3));
+          const tFixed = parseFloat(tVal.toFixed(6));
 
           // Avoid duplicate keyTimes (clamp to slightly after previous)
           const prevT = parseFloat(keyTimes[keyTimes.length - 1]);
-          const safeT = Math.max(prevT + 0.001, tFixed);
-          const safeTFixed = Math.min(safeT, 0.999).toFixed(3);
+          const safeT = Math.max(prevT + 0.000001, tFixed);
+          const safeTFixed = Math.min(safeT, 0.999999).toFixed(6);
 
           const paintedColor =
             event.owner === CellOwner.Snake1
@@ -174,8 +174,8 @@ function renderBaseGrid(result: GameResult, config: RenderConfig, totalDurationS
         }
 
         // Always end at t=1.000 with the last color
-        if (keyTimes[keyTimes.length - 1] !== "1.000") {
-          keyTimes.push("1.000");
+        if (keyTimes[keyTimes.length - 1] !== "1.000000") {
+          keyTimes.push("1.000000");
           values.push(currentColor);
         }
 
@@ -226,7 +226,7 @@ function renderAnimatedSnakes(result: GameResult, config: RenderConfig, totalDur
     s2x.push((p2.x * (cellSize + cellGap) + cellSize / 2).toFixed(1));
     s2y.push((p2.y * (cellSize + cellGap) + cellSize / 2).toFixed(1));
     
-    keyTimes.push((sampledCount / (result.frames.length / step)).toFixed(3));
+    keyTimes.push((sampledCount / (result.frames.length / step)).toFixed(6));
     sampledCount++;
   }
 
@@ -238,7 +238,7 @@ function renderAnimatedSnakes(result: GameResult, config: RenderConfig, totalDur
   s1y.push((lp1.y * (cellSize + cellGap) + cellSize / 2).toFixed(1));
   s2x.push((lp2.x * (cellSize + cellGap) + cellSize / 2).toFixed(1));
   s2y.push((lp2.y * (cellSize + cellGap) + cellSize / 2).toFixed(1));
-  keyTimes.push("1.000");
+  keyTimes.push("1.000000");
 
   const tStr = keyTimes.join(";");
   const r = cellSize / 2 + 1;
