@@ -39,7 +39,7 @@ Each snake evaluates moves using a **multi-factor scoring system** that balances
 | Escape route check | −5/−20 | Avoid dead-ends |
 | Long-range navigation | +30/−10 | March toward nearest target when stuck |
 | Loop detection | force random | Break positional cycles |
-| Stagnation ε-greedy | 3%→50% | Increasing randomness when stuck |
+| Stagnation ε-greedy | 1%→25% | Increasing randomness when stuck |
 
 This achieves **100% grid coverage** with natural variation in territory split.
 

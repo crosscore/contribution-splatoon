@@ -35,11 +35,11 @@ The engine tracks how many consecutive turns each snake has moved **without pain
 
 | Stagnation | Random Probability |
 |------------|-------------------|
-| 0 turns    | 3% (base)         |
-| 10 turns   | 28%               |
-| 20+ turns  | 53% (capped)      |
+| 0 turns    | 1% (base)         |
+| 10 turns   | 16%               |
+| 20+ turns  | 26% (capped)      |
 
-**Formula**: `ε = 0.03 + min(0.50, stagnation × 0.025)`
+**Formula**: `ε = 0.01 + min(0.25, stagnation × 0.015)`
 
 This ensures the snake moves efficiently when actively painting but injects increasing randomness when stuck, breaking any repetitive pattern.
 

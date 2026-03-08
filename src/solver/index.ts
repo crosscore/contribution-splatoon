@@ -28,9 +28,9 @@ export function chooseDirection(
   if (validMoves.length === 0) return null;
 
   // Epsilon-greedy: probability of random move increases with stagnation
-  // Base: 3%, at 10 turns stagnation: ~20%, at 20+: 50%
-  const baseEpsilon = 0.03;
-  const stagnationEpsilon = Math.min(0.50, stagnation * 0.025);
+  // Base: 1%, at 10 turns stagnation: ~16%, at 20+: 25%
+  const baseEpsilon = 0.01;
+  const stagnationEpsilon = Math.min(0.25, stagnation * 0.015);
   const epsilon = baseEpsilon + stagnationEpsilon;
 
   if (Math.random() < epsilon) {
