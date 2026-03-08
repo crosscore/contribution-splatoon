@@ -10,7 +10,7 @@ jobs:
   generate-and-deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
 
     steps:
       - name: Checkout contribution-splatoon
@@ -26,10 +26,23 @@ jobs:
         run: npm ci
 
       - name: Generate SVG (light mode)
-        run: npx tsx src/cli.ts --user crosscore --token ${{ secrets.GITHUB_TOKEN }} --output /tmp/splatoon.svg
+        run: npx tsx src/cli.ts --user crosscore --token ${{ secrets.GITHUB_TOKEN }} --output docs/splatoon.svg
 
       - name: Generate SVG (dark mode)
-        run: npx tsx src/cli.ts --user crosscore --token ${{ secrets.GITHUB_TOKEN }} --output /tmp/splatoon-dark.svg --dark
+        run: npx tsx src/cli.ts --user crosscore --token ${{ secrets.GITHUB_TOKEN }} --output docs/splatoon-dark.svg --dark
+
+      - name: Copy SVGs for profile repo
+        run: |
+          cp docs/splatoon.svg /tmp/splatoon.svg
+          cp docs/splatoon-dark.svg /tmp/splatoon-dark.svg
+
+      - name: Commit updated docs/ SVGs (keep-alive)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/splatoon.svg docs/splatoon-dark.svg
+          git diff --staged --quiet || git commit -m "chore: regenerate SVGs with latest contributions [skip ci]"
+          git push
 
       - name: Push SVG to crosscore/crosscore
         uses: dmnemec/copy_file_to_another_repo_action@main
