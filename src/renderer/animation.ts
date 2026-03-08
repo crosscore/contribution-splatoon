@@ -75,8 +75,7 @@ function renderScoreBar(
   // Animated percentage text using discrete opacity on sampled text elements.
   // SVG <animate> can't change text content, so we create one <text> per unique
   // percentage value and animate opacity so only the current one is visible.
-  // We sample at ~50 intervals to keep DOM size reasonable.
-  const sampleInterval = Math.max(1, Math.floor(result.frames.length / 200));
+  // We use change-detection: a new element is created only when the % changes.
   
   interface TextSample {
     text: string;
@@ -86,18 +85,20 @@ function renderScoreBar(
 
   function buildTextSamples(snakeKey: "snake1" | "snake2"): TextSample[] {
     const samples: TextSample[] = [];
-    for (let i = 0; i < result.frames.length; i += sampleInterval) {
+    let lastText = "";
+    for (let i = 0; i < result.frames.length; i++) {
       const frame = result.frames[i];
       const score = frame.score;
       const pct = score.total > 0 ? ((score[snakeKey] / score.total) * 100).toFixed(1) : "0.0";
-      const startT = i / result.frames.length;
-      const endI = Math.min(i + sampleInterval, result.frames.length - 1);
-      const endT = endI / result.frames.length;
-      samples.push({ text: `◆ ${pct}%`, startTime: startT, endTime: endT });
-    }
-    // Ensure last sample extends to 1.0
-    if (samples.length > 0) {
-      samples[samples.length - 1].endTime = 1.0;
+      const text = `◆ ${pct}%`;
+      if (text !== lastText) {
+        // Close the previous sample
+        if (samples.length > 0) {
+          samples[samples.length - 1].endTime = i / result.frames.length;
+        }
+        samples.push({ text, startTime: i / result.frames.length, endTime: 1.0 });
+        lastText = text;
+      }
     }
     return samples;
   }
