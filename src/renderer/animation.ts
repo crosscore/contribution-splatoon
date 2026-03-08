@@ -112,6 +112,19 @@ function renderBaseGrid(result: GameResult, config: RenderConfig, totalDurationS
 
   // Find when each cell is painted (all color change events)
   const paintEvents = new Map<string, { turn: number, owner: CellOwner }[]>();
+
+  // Handle turn 0: cells that are already painted at the start (snake starting positions)
+  const frame0 = result.frames[0].grid;
+  for (let x = 0; x < frame0.width; x++) {
+    for (let y = 0; y < frame0.height; y++) {
+      const owner = frame0.cells[x][y].owner;
+      if (owner !== CellOwner.None) {
+        const key = `${x}_${y}`;
+        paintEvents.set(key, [{ turn: 0, owner }]);
+      }
+    }
+  }
+
   for (let i = 1; i < result.frames.length; i++) {
     const prev = result.frames[i - 1].grid;
     const curr = result.frames[i].grid;
