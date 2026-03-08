@@ -1,0 +1,49 @@
+name: "Contribution Splatoon"
+description: "Generate a Splatoon-style territory battle animation on your GitHub contribution graph"
+author: "crosscore"
+
+inputs:
+  github_user_name:
+    description: "GitHub username to generate the animation for"
+    required: true
+  github_token:
+    description: "GitHub token for API access (defaults to GITHUB_TOKEN)"
+    required: false
+    default: ${{ github.token }}
+  outputs:
+    description: |
+      Output file paths, one per line.
+      Append ?palette=dark for dark mode variant.
+      Example:
+        dist/splatoon.svg
+        dist/splatoon-dark.svg?palette=dark
+    required: false
+    default: "dist/splatoon.svg"
+  color_snake_1:
+    description: "Color of Snake 1 body"
+    required: false
+    default: "#FF6B00"
+  color_snake_2:
+    description: "Color of Snake 2 body"
+    required: false
+    default: "#7B3FF2"
+  color_trail_1:
+    description: "Trail color of Snake 1"
+    required: false
+    default: "#FFB366"
+  color_trail_2:
+    description: "Trail color of Snake 2"
+    required: false
+    default: "#B088F9"
+  strategy:
+    description: "AI strategy: aggressive, balanced, random"
+    required: false
+    default: "aggressive"
+
+runs:
+  using: "node20"
+  main: "dist/index.js"
+
+branding:
+  icon: "zap"
+  color: "orange"

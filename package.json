@@ -1,0 +1,40 @@
+{
+  "name": "contribution-splatoon",
+  "version": "1.0.0",
+  "description": "Two snakes battle for territory on your GitHub contribution graph — Splatoon style",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsx scripts/build.ts",
+    "dev": "tsx src/cli.ts",
+    "test": "jest --verbose",
+    "type-check": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/crosscore/contribution-splatoon.git"
+  },
+  "keywords": [
+    "github",
+    "contribution",
+    "snake",
+    "splatoon",
+    "svg",
+    "animation",
+    "github-action"
+  ],
+  "author": "crosscore",
+  "license": "MIT",
+  "dependencies": {
+    "@actions/core": "^1.10.1",
+    "@actions/github": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.11.0",
+    "esbuild": "^0.20.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}
