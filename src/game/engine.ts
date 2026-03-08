@@ -84,7 +84,7 @@ export function runGame(
 
     // Snake 1 moves
     if (snake1.alive && snake1CanMove) {
-      const dir1 = chooseDirection(snake1, grid, config.strategy);
+      const dir1 = chooseDirection(snake1, grid, config.strategy, snake2.position);
       if (dir1) {
         moveSnake(snake1, dir1, grid);
       } else {
@@ -94,7 +94,7 @@ export function runGame(
 
     // Snake 2 moves
     if (snake2.alive && snake2CanMove) {
-      const dir2 = chooseDirection(snake2, grid, config.strategy);
+      const dir2 = chooseDirection(snake2, grid, config.strategy, snake1.position);
       if (dir2) {
         moveSnake(snake2, dir2, grid);
       } else {

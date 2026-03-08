@@ -14,7 +14,8 @@ import { getNextPosition, getValidMoves, isInBounds } from "../game/snake";
 export function chooseDirection(
   snake: Snake,
   grid: Grid,
-  strategy: Strategy
+  strategy: Strategy,
+  opponentPos?: Position
 ): Direction | null {
   const validMoves = getValidMoves(snake, grid);
 
@@ -24,11 +25,11 @@ export function chooseDirection(
     case "random":
       return randomStrategy(validMoves);
     case "aggressive":
-      return aggressiveStrategy(snake, grid, validMoves);
+      return aggressiveStrategy(snake, grid, validMoves, opponentPos);
     case "balanced":
-      return balancedStrategy(snake, grid, validMoves);
+      return balancedStrategy(snake, grid, validMoves, opponentPos);
     default:
-      return aggressiveStrategy(snake, grid, validMoves);
+      return aggressiveStrategy(snake, grid, validMoves, opponentPos);
   }
 }
 
@@ -40,65 +41,76 @@ function randomStrategy(validMoves: Direction[]): Direction {
 }
 
 /**
- * Aggressive strategy — improved version with multiple heuristics:
+ * Aggressive strategy — v3 with anti-chase-loop design:
  *
- * 1. **Distance-decayed BFS**: Closer paintable cells contribute more to the
- *    score, encouraging the snake to paint nearby cells efficiently rather
- *    than wandering toward distant areas.
+ * Core insight: The old algorithm valued enemy cells 3x and unpainted 1x, which
+ * made snakes chase behind the enemy instead of seeking fresh territory. The fix:
  *
- * 2. **Frontier bonus**: If we're moving from own territory into unpainted/enemy
- *    territory, we get a bonus. This pushes the snake to advance the frontier
- *    rather than retrace its own area.
+ * 1. **Unpainted cells are king**: CellOwner.None cells score MUCH higher (3x)
+ *    than enemy cells (1x). This pulls the snake toward unexplored territory.
  *
- * 3. **Escape route penalty**: If a direction leads to a dead-end (very few
- *    reachable cells within a short radius), it gets penalized. This prevents
- *    the snake from getting cornered.
+ * 2. **Nearest-unpainted directional bonus**: Compute direction toward the
+ *    nearest cluster of unpainted cells and give a strong bonus for heading
+ *    that way. This provides a "global compass" beyond the BFS horizon.
  *
- * 4. **Sweep direction bias**: A slight bias toward continuing in the same
- *    general direction (if the previous heading is known from trail), which
- *    produces cleaner, more efficient sweep patterns instead of zig-zagging.
+ * 3. **Anti-chase**: If the immediate next cell is an enemy cell but there are
+ *    unpainted cells reachable in other directions, penalize the enemy-chase.
+ *
+ * 4. **Recently-visited and own-territory penalties** to prevent cycling.
+ *
+ * 5. **Escape route check** to avoid dead-ends.
  */
 function aggressiveStrategy(
   snake: Snake,
   grid: Grid,
-  validMoves: Direction[]
+  validMoves: Direction[],
+  opponentPos?: Position
 ): Direction {
   let bestScore = -Infinity;
   let bestDir = validMoves[0];
 
-  // Determine "heading" from the last 2 trail positions
   const heading = getHeading(snake);
 
-  // Build a set of recently-visited positions (last 10) to penalize cycling
+  // Build a set of recently-visited positions (last 15) to penalize cycling
   const recentSet = new Set<string>();
-  const recentLen = Math.min(snake.trail.length, 10);
+  const recentLen = Math.min(snake.trail.length, 15);
   for (let i = snake.trail.length - recentLen; i < snake.trail.length; i++) {
     if (i >= 0) recentSet.add(`${snake.trail[i].x},${snake.trail[i].y}`);
   }
+
+  // Compute direction toward nearest unpainted cluster (global compass)
+  const unpaintedDir = findUnpaintedDirection(snake.position, grid, snake.id);
 
   for (const dir of validMoves) {
     const nextPos = getNextPosition(snake.position, dir);
     const nextCell = grid.cells[nextPos.x][nextPos.y];
 
-    // 1. Distance-decayed reachable paintable score
+    // 1. Distance-decayed BFS score (unpainted >> enemy >> own)
     const paintableScore = countReachableWeighted(nextPos, grid, snake.id);
 
-    // 2. Frontier bonus: strong incentive to paint new cells
+    // 2. Immediate cell value — ONLY unpainted cells are rewarded
     let frontierBonus = 0;
-    if (nextCell.owner !== snake.id) {
-      frontierBonus = nextCell.owner === CellOwner.None ? 8 : 12;
+    if (nextCell.owner === CellOwner.None) {
+      frontierBonus = 15; // strong bonus for painting fresh ground
+    } else if (nextCell.owner !== snake.id) {
+      frontierBonus = -2; // enemy cells: slight penalty to prevent chasing
     } else {
-      // Own territory: penalty for retracing
-      frontierBonus = -3;
+      frontierBonus = -5; // own territory: penalty for retracing
     }
 
-    // 3. Recently-visited penalty: discourage cycling through same cells
+    // 3. Global compass: bonus for heading toward unpainted regions
+    let compassBonus = 0;
+    if (unpaintedDir && dir === unpaintedDir) {
+      compassBonus = 10;
+    }
+
+    // 4. Recently-visited penalty
     let recentPenalty = 0;
     if (recentSet.has(`${nextPos.x},${nextPos.y}`)) {
-      recentPenalty = -6;
+      recentPenalty = -8;
     }
 
-    // 4. Escape route check: count reachable cells in short range (depth=5)
+    // 5. Escape route check
     const escapeCount = countReachableShort(nextPos, grid, 5);
     let escapePenalty = 0;
     if (escapeCount < 3) {
@@ -107,13 +119,13 @@ function aggressiveStrategy(
       escapePenalty = -5;
     }
 
-    // 5. Sweep direction bonus: slight preference for continuing same heading
+    // 6. Sweep direction bonus
     let sweepBonus = 0;
     if (heading && dir === heading) {
       sweepBonus = 2;
     }
 
-    // 6. Wall-hugging avoidance
+    // 7. Edge avoidance
     let edgePenalty = 0;
     if (
       nextPos.x === 0 ||
@@ -124,13 +136,29 @@ function aggressiveStrategy(
       edgePenalty = -1;
     }
 
+    // 8. Opponent avoidance: if near the opponent, strongly prefer moving away
+    let opponentBonus = 0;
+    if (opponentPos) {
+      const currentDist = Math.abs(snake.position.x - opponentPos.x) + Math.abs(snake.position.y - opponentPos.y);
+      if (currentDist <= 5) {
+        const nextDist = Math.abs(nextPos.x - opponentPos.x) + Math.abs(nextPos.y - opponentPos.y);
+        if (nextDist > currentDist) {
+          opponentBonus = 10; // move away from opponent
+        } else if (nextDist < currentDist) {
+          opponentBonus = -8; // penalize moving toward opponent
+        }
+      }
+    }
+
     const score =
       paintableScore +
       frontierBonus +
+      compassBonus +
       recentPenalty +
       escapePenalty +
       sweepBonus +
       edgePenalty +
+      opponentBonus +
       Math.random() * 0.5;
 
     if (score > bestScore) {
@@ -148,7 +176,8 @@ function aggressiveStrategy(
 function balancedStrategy(
   snake: Snake,
   grid: Grid,
-  validMoves: Direction[]
+  validMoves: Direction[],
+  opponentPos?: Position
 ): Direction {
   let bestScore = -Infinity;
   let bestDir = validMoves[0];
@@ -160,10 +189,12 @@ function balancedStrategy(
   const heading = getHeading(snake);
 
   const recentSet = new Set<string>();
-  const recentLen = Math.min(snake.trail.length, 10);
+  const recentLen = Math.min(snake.trail.length, 15);
   for (let i = snake.trail.length - recentLen; i < snake.trail.length; i++) {
     if (i >= 0) recentSet.add(`${snake.trail[i].x},${snake.trail[i].y}`);
   }
+
+  const unpaintedDir = findUnpaintedDirection(snake.position, grid, snake.id);
 
   for (const dir of validMoves) {
     const nextPos = getNextPosition(snake.position, dir);
@@ -172,18 +203,25 @@ function balancedStrategy(
 
     const distFromCenter =
       Math.abs(nextPos.x - centerX) + Math.abs(nextPos.y - centerY);
-    const centerBonus = ((maxDist - distFromCenter) / maxDist) * 10;
+    const centerBonus = ((maxDist - distFromCenter) / maxDist) * 8;
 
     let frontierBonus = 0;
-    if (nextCell.owner !== snake.id) {
-      frontierBonus = nextCell.owner === CellOwner.None ? 6 : 10;
-    } else {
+    if (nextCell.owner === CellOwner.None) {
+      frontierBonus = 12;
+    } else if (nextCell.owner !== snake.id) {
       frontierBonus = -2;
+    } else {
+      frontierBonus = -4;
+    }
+
+    let compassBonus = 0;
+    if (unpaintedDir && dir === unpaintedDir) {
+      compassBonus = 8;
     }
 
     let recentPenalty = 0;
     if (recentSet.has(`${nextPos.x},${nextPos.y}`)) {
-      recentPenalty = -5;
+      recentPenalty = -6;
     }
 
     const escapeCount = countReachableShort(nextPos, grid, 5);
@@ -197,13 +235,28 @@ function balancedStrategy(
       sweepBonus = 1.5;
     }
 
+    let opponentBonus = 0;
+    if (opponentPos) {
+      const currentDist = Math.abs(snake.position.x - opponentPos.x) + Math.abs(snake.position.y - opponentPos.y);
+      if (currentDist <= 5) {
+        const nextDist = Math.abs(nextPos.x - opponentPos.x) + Math.abs(nextPos.y - opponentPos.y);
+        if (nextDist > currentDist) {
+          opponentBonus = 8;
+        } else if (nextDist < currentDist) {
+          opponentBonus = -6;
+        }
+      }
+    }
+
     const score =
       paintable +
       centerBonus +
       frontierBonus +
+      compassBonus +
       recentPenalty +
       escapePenalty +
       sweepBonus +
+      opponentBonus +
       Math.random() * 0.5;
 
     if (score > bestScore) {
@@ -217,7 +270,6 @@ function balancedStrategy(
 
 /**
  * Determine the snake's current heading from its last 2 trail positions.
- * Returns null if trail is too short.
  */
 function getHeading(snake: Snake): Direction | null {
   if (snake.trail.length < 2) return null;
@@ -234,26 +286,66 @@ function getHeading(snake: Snake): Direction | null {
 }
 
 /**
+ * Find the direction toward the nearest cluster of unpainted (CellOwner.None) cells.
+ *
+ * Scans the grid to find the center of mass of unpainted cells within a
+ * reasonable radius, then returns the cardinal direction that best moves
+ * toward that center. This gives the snake a "global compass" so it heads
+ * toward fresh territory even when the local BFS can't see it.
+ */
+function findUnpaintedDirection(
+  pos: Position,
+  grid: Grid,
+  snakeId: CellOwner.Snake1 | CellOwner.Snake2
+): Direction | null {
+  let sumX = 0;
+  let sumY = 0;
+  let count = 0;
+
+  // Scan the entire grid for unpainted cells
+  for (let x = 0; x < grid.width; x++) {
+    for (let y = 0; y < grid.height; y++) {
+      if (grid.cells[x][y].owner === CellOwner.None) {
+        sumX += x;
+        sumY += y;
+        count++;
+      }
+    }
+  }
+
+  if (count === 0) return null;
+
+  const avgX = sumX / count;
+  const avgY = sumY / count;
+
+  const dx = avgX - pos.x;
+  const dy = avgY - pos.y;
+
+  // Return the direction with the larger component
+  if (Math.abs(dx) > Math.abs(dy)) {
+    return dx > 0 ? Direction.Right : Direction.Left;
+  } else if (Math.abs(dy) > 0) {
+    return dy > 0 ? Direction.Down : Direction.Up;
+  }
+  return null;
+}
+
+/**
  * BFS with distance decay to count paintable cells weighted by proximity.
  *
- * Closer cells matter much more than distant cells. This produces a score
- * that encourages efficient local sweeping.
+ * KEY CHANGE (v3): Unpainted cells (CellOwner.None) score 3x, enemy cells
+ * only 1x. This REVERSES the old priority and prevents chase-loops where
+ * the snake follows behind the enemy instead of seeking fresh ground.
  *
- * Weight formula: (maxDepth - depth) / maxDepth
- *   - depth 0 (next cell):  weight ~1.0
- *   - depth 20 (far cell):  weight ~0.36
- *   - depth 30:             weight ~0.14
- *
- * Own cells are walkable but score 0. Enemy cells score 3x. Unpainted = 1x.
+ * Own cells are walkable but score 0.
  */
 function countReachableWeighted(
   start: Position,
   grid: Grid,
   snakeId: CellOwner.Snake1 | CellOwner.Snake2
 ): number {
-  const maxDepth = 35;
+  const maxDepth = 30;
   const visited = new Set<string>();
-  // Use a simple array with index pointer instead of shift() for O(1) dequeue
   const queue: { pos: Position; depth: number }[] = [];
   let queueHead = 0;
   let score = 0;
@@ -261,11 +353,10 @@ function countReachableWeighted(
   visited.add(`${start.x},${start.y}`);
   queue.push({ pos: start, depth: 0 });
 
-  // Score the starting cell
+  // Score the starting cell — only unpainted cells count
   const startOwner = grid.cells[start.x][start.y].owner;
-  if (startOwner !== snakeId) {
-    const base = startOwner === CellOwner.None ? 1 : 3;
-    score += base; // depth 0 = full weight
+  if (startOwner === CellOwner.None) {
+    score += 3;
   }
 
   const directions = [
@@ -289,14 +380,14 @@ function countReachableWeighted(
       visited.add(key);
       const owner = grid.cells[next.x][next.y].owner;
 
-      // Distance-decayed scoring
-      if (owner !== snakeId) {
-        const base = owner === CellOwner.None ? 1 : 3;
-        const weight = (maxDepth - (depth + 1)) / maxDepth;
-        score += base * weight;
+      // Distance-decayed scoring: ONLY unpainted cells contribute
+      // Enemy and own cells score 0 — this prevents chase-loops entirely
+      const weight = (maxDepth - (depth + 1)) / maxDepth;
+      if (owner === CellOwner.None) {
+        score += 3 * weight;
       }
+      // Enemy & own: 0 points, but still walkable for traversal
 
-      // All cells are walkable (including own territory)
       queue.push({ pos: next, depth: depth + 1 });
     }
   }
@@ -306,8 +397,7 @@ function countReachableWeighted(
 
 /**
  * Quick BFS to count total reachable cells within a short depth.
- * Used for escape-route detection — if very few cells are reachable
- * in ~5 steps, we're approaching a dead-end.
+ * Used for escape-route detection.
  */
 function countReachableShort(
   start: Position,
