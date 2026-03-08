@@ -47,8 +47,8 @@ function renderScoreBar(
 
     values1.push(w1.toFixed(1));
     values2.push(w2.toFixed(1));
-    text1.push(`🐍 ${pct1}%`);
-    text2.push(`🐍 ${pct2}%`);
+    text1.push(`◆ ${pct1}%`);
+    text2.push(`◆ ${pct2}%`);
     
     keyTimes.push((sampledCount / (result.frames.length / step)).toFixed(6));
     sampledCount++;
@@ -64,8 +64,8 @@ function renderScoreBar(
   
   values1.push(lastW1.toFixed(1));
   values2.push(lastW2.toFixed(1));
-  text1.push(`🐍 ${lastPct1}%`);
-  text2.push(`🐍 ${lastPct2}%`);
+  text1.push(`◆ ${lastPct1}%`);
+  text2.push(`◆ ${lastPct2}%`);
   keyTimes.push("1.000000");
 
   const valStr1 = values1.join(";");
@@ -96,8 +96,8 @@ function renderScoreBar(
     </rect>
 
     <!-- Score labels (Final score) -->
-    <text x="0" y="${y + barHeight + 14}" font-family="monospace, sans-serif" font-size="11" fill="${palette.snake1Color}" font-weight="bold">🐍 ${lastPct1}%</text>
-    <text x="${barWidth}" y="${y + barHeight + 14}" font-family="monospace, sans-serif" font-size="11" fill="${palette.snake2Color}" font-weight="bold" text-anchor="end">🐍 ${lastPct2}%</text>
+    <text x="0" y="${y + barHeight + 14}" font-family="monospace, sans-serif" font-size="11" fill="${palette.snake1Color}" font-weight="bold">◆ ${lastPct1}%</text>
+    <text x="${barWidth}" y="${y + barHeight + 14}" font-family="monospace, sans-serif" font-size="11" fill="${palette.snake2Color}" font-weight="bold" text-anchor="end">◆ ${lastPct2}%</text>
   `;
 }
 
