@@ -9,17 +9,39 @@ import {
 import { getNextPosition, getValidMoves, isInBounds } from "../game/snake";
 
 /**
- * Choose the next direction for a snake based on the given strategy
+ * Choose the next direction for a snake based on the given strategy.
+ *
+ * Stagnation-aware: when the snake hasn't painted a new cell for many turns,
+ * the epsilon (random move probability) increases, forcing loop-breaking.
+ *
+ * @param stagnation - consecutive turns without painting a new cell (0 = just painted)
  */
 export function chooseDirection(
   snake: Snake,
   grid: Grid,
   strategy: Strategy,
-  opponentPos?: Position
+  opponentPos?: Position,
+  stagnation: number = 0
 ): Direction | null {
   const validMoves = getValidMoves(snake, grid);
 
   if (validMoves.length === 0) return null;
+
+  // Epsilon-greedy: probability of random move increases with stagnation
+  // Base: 3%, at 10 turns stagnation: ~20%, at 20+: 50%
+  const baseEpsilon = 0.03;
+  const stagnationEpsilon = Math.min(0.50, stagnation * 0.025);
+  const epsilon = baseEpsilon + stagnationEpsilon;
+
+  if (Math.random() < epsilon) {
+    return randomStrategy(validMoves);
+  }
+
+  // Also detect position loops: if snake visited the same 4 positions in order
+  // twice in the last 20 positions, force a random move
+  if (detectLoop(snake)) {
+    return randomStrategy(validMoves);
+  }
 
   switch (strategy) {
     case "random":
@@ -31,6 +53,34 @@ export function chooseDirection(
     default:
       return aggressiveStrategy(snake, grid, validMoves, opponentPos);
   }
+}
+
+/**
+ * Detect if the snake is in a position loop by checking for repeated
+ * subsequences in the last 20 trail positions.
+ */
+function detectLoop(snake: Snake): boolean {
+  const trail = snake.trail;
+  if (trail.length < 8) return false;
+
+  // Check for period-2, period-3, period-4 loops in the last 20 positions
+  const lookback = Math.min(trail.length, 20);
+  const recent = trail.slice(trail.length - lookback);
+
+  for (const period of [2, 3, 4]) {
+    if (recent.length < period * 2) continue;
+    let isLoop = true;
+    for (let i = 0; i < period; i++) {
+      const a = recent[recent.length - 1 - i];
+      const b = recent[recent.length - 1 - i - period];
+      if (a.x !== b.x || a.y !== b.y) {
+        isLoop = false;
+        break;
+      }
+    }
+    if (isLoop) return true;
+  }
+  return false;
 }
 
 /**
