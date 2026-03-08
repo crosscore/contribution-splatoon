@@ -31,11 +31,6 @@ jobs:
       - name: Generate SVG (dark mode)
         run: npx tsx src/cli.ts --user crosscore --token ${{ secrets.GITHUB_TOKEN }} --output docs/splatoon-dark.svg --dark
 
-      - name: Copy SVGs for profile repo
-        run: |
-          cp docs/splatoon.svg /tmp/splatoon.svg
-          cp docs/splatoon-dark.svg /tmp/splatoon-dark.svg
-
       - name: Commit updated docs/ SVGs (keep-alive)
         run: |
           git config user.name "github-actions[bot]"
@@ -49,7 +44,7 @@ jobs:
         env:
           API_TOKEN_GITHUB: ${{ secrets.PROFILE_REPO_TOKEN }}
         with:
-          source_file: "/tmp/splatoon.svg"
+          source_file: "docs/splatoon.svg"
           destination_repo: "crosscore/crosscore"
           destination_branch: "main"
           user_email: "github-actions[bot]@users.noreply.github.com"
@@ -61,7 +56,7 @@ jobs:
         env:
           API_TOKEN_GITHUB: ${{ secrets.PROFILE_REPO_TOKEN }}
         with:
-          source_file: "/tmp/splatoon-dark.svg"
+          source_file: "docs/splatoon-dark.svg"
           destination_repo: "crosscore/crosscore"
           destination_branch: "main"
           user_email: "github-actions[bot]@users.noreply.github.com"
