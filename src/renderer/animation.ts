@@ -76,7 +76,7 @@ function renderScoreBar(
   // SVG <animate> can't change text content, so we create one <text> per unique
   // percentage value and animate opacity so only the current one is visible.
   // We sample at ~50 intervals to keep DOM size reasonable.
-  const sampleInterval = Math.max(1, Math.floor(result.frames.length / 50));
+  const sampleInterval = Math.max(1, Math.floor(result.frames.length / 200));
   
   interface TextSample {
     text: string;
