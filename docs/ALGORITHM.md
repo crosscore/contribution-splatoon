@@ -13,7 +13,7 @@ Each snake makes decisions every turn using a multi-layered heuristic system. Th
 │  ┌──────────────┐   ┌──────────────┐   ┌──────────────────┐ │
 │  │ Loop         │   │ Stagnation   │   │ Strategy         │ │
 │  │ Detection    │──▶│ ε-Greedy     │──▶│ Evaluation       │ │
-│  │ (period 2-4) │   │ (3%~50%)     │   │ (9 factors)      │ │
+│  │ (period 2-4) │   │ (0.5%~15%)   │   │ (9 factors)      │ │
 │  └──────────────┘   └──────────────┘   └──────────────────┘ │
 │         │                  │             │           │       │
 │    Force random       Force random   Normal mode  Nav mode  │
@@ -75,9 +75,9 @@ The strong asymmetry ensures the snake always prefers fresh ground over repainti
 
 Scans the **entire grid** to find the center of mass of all remaining unpainted cells, then rewards moving in that cardinal direction. This gives the snake a "sense of direction" beyond the BFS horizon.
 
-#### Factor 4: Recently-Visited Penalty (-8)
+#### Factor 4: Recently-Visited Penalty (-8 / -15)
 
-Positions visited in the last 15 steps receive a penalty, discouraging small-area looping.
+Positions visited in the last 15 steps receive a **-8** penalty, discouraging small-area looping. In **nav mode** (Factor 9), the window extends to **30 steps** and the penalty increases to **-15**.
 
 #### Factor 5: Escape Route Detection (-5 / -20)
 
@@ -131,7 +131,7 @@ score = BFS_paintable
       + opponent_avoidance
       + sweep_bonus
       + edge_penalty
-      + nav_bonus           ← NEW (Factor 9)
+      + nav_bonus
       + random_jitter(0, 0.5)
 ```
 
@@ -161,6 +161,7 @@ engine.ts                    solver/index.ts
 │                  │        │    ├─ compass             │
 └──────────────────┘        │    ├─ escape check        │
                             │    ├─ opponent avoidance  │
-                            │    └─ sweep + edge        │
+                            │    ├─ sweep + edge        │
+                            │    └─ nav mode (BFS path) │
                             └──────────────────────────┘
 ```
