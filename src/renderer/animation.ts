@@ -72,13 +72,61 @@ function renderScoreBar(
   const valStr2 = values2.join(";");
   const timeStr = keyTimes.join(";");
 
-  // Since SVG <animate> can't animate text content directly across multiple values easily without SMIL chaining,
-  // we will just show the final text, OR use multiple text elements with fill-opacity animations.
-  // To keep it clean and performant, we'll animate the bars but keep the text static showing final score,
-  // or use a discrete animation for text. Let's make text discrete.
+  // Animated percentage text using discrete opacity on sampled text elements.
+  // SVG <animate> can't change text content, so we create one <text> per unique
+  // percentage value and animate opacity so only the current one is visible.
+  // We sample at ~50 intervals to keep DOM size reasonable.
+  const sampleInterval = Math.max(1, Math.floor(result.frames.length / 50));
   
-  // Actually, animating text content in SVG is not well supported.
-  // We'll show the final percentage only, to keep the DOM clean.
+  interface TextSample {
+    text: string;
+    startTime: number; // normalized 0-1
+    endTime: number;   // normalized 0-1
+  }
+
+  function buildTextSamples(snakeKey: "snake1" | "snake2"): TextSample[] {
+    const samples: TextSample[] = [];
+    for (let i = 0; i < result.frames.length; i += sampleInterval) {
+      const frame = result.frames[i];
+      const score = frame.score;
+      const pct = score.total > 0 ? ((score[snakeKey] / score.total) * 100).toFixed(1) : "0.0";
+      const startT = i / result.frames.length;
+      const endI = Math.min(i + sampleInterval, result.frames.length - 1);
+      const endT = endI / result.frames.length;
+      samples.push({ text: `◆ ${pct}%`, startTime: startT, endTime: endT });
+    }
+    // Ensure last sample extends to 1.0
+    if (samples.length > 0) {
+      samples[samples.length - 1].endTime = 1.0;
+    }
+    return samples;
+  }
+
+  const samples1 = buildTextSamples("snake1");
+  const samples2 = buildTextSamples("snake2");
+
+  function renderAnimatedText(
+    samples: TextSample[],
+    x: string,
+    textAnchor: string,
+    color: string
+  ): string {
+    return samples.map((s, idx) => {
+      // Build opacity values: 0 everywhere except during this sample's time range
+      // Use discrete keyTimes with just this sample's on/off transitions
+      const opacityValues = "0;1;0";
+      const startT = Math.max(0.000001, s.startTime).toFixed(6);
+      const endT = Math.min(0.999999, s.endTime).toFixed(6);
+      const opacityKeyTimes = `0.000000;${startT};${endT}`;
+      
+      return `      <text x="${x}" y="${y + barHeight + 14}" font-family="monospace, sans-serif" font-size="11" fill="${color}" font-weight="bold" text-anchor="${textAnchor}" opacity="0">${s.text}
+        <animate attributeName="opacity" values="${opacityValues}" keyTimes="${opacityKeyTimes}" dur="${totalDurationSec}s" repeatCount="indefinite" calcMode="discrete" />
+      </text>`;
+    }).join("\n");
+  }
+
+  const animatedText1 = renderAnimatedText(samples1, "0", "start", palette.snake1Color);
+  const animatedText2 = renderAnimatedText(samples2, `${barWidth}`, "end", palette.snake2Color);
 
   return `
     <!-- Score bar background -->
@@ -95,9 +143,9 @@ function renderScoreBar(
       <animate attributeName="x" values="${values2.map(w => (barWidth - parseFloat(w)).toFixed(1)).join(";")}" keyTimes="${timeStr}" dur="${totalDurationSec}s" repeatCount="indefinite" calcMode="linear" />
     </rect>
 
-    <!-- Score labels (Final score) -->
-    <text x="0" y="${y + barHeight + 14}" font-family="monospace, sans-serif" font-size="11" fill="${palette.snake1Color}" font-weight="bold">◆ ${lastPct1}%</text>
-    <text x="${barWidth}" y="${y + barHeight + 14}" font-family="monospace, sans-serif" font-size="11" fill="${palette.snake2Color}" font-weight="bold" text-anchor="end">◆ ${lastPct2}%</text>
+    <!-- Animated score labels -->
+${animatedText1}
+${animatedText2}
   `;
 }
 
