@@ -137,27 +137,27 @@ export interface RenderConfig {
   darkMode: boolean;
 }
 
-/** Default light palette */
+/** Default light palette — Splatoon-inspired: Hot Pink × Cyan */
 export const DEFAULT_LIGHT_PALETTE: ColorPalette = {
   background: "#ffffff",
   emptyCell: "#ebedf0",
   contributionColors: ["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"],
-  snake1Color: "#FF6B00",
-  snake1Trail: "#FFB366",
-  snake2Color: "#7B3FF2",
-  snake2Trail: "#B088F9",
+  snake1Color: "#E8006A",   // Splatoon hot pink (body)
+  snake1Trail: "#FF85AA",   // lighter pink (trail / painted cells)
+  snake2Color: "#008CC8",   // Splatoon cyan (body)
+  snake2Trail: "#5DD4FF",   // lighter cyan (trail / painted cells)
   textColor: "#24292f",
 };
 
-/** Default dark palette */
+/** Default dark palette — Splatoon-inspired: Hot Pink × Cyan (dark mode) */
 export const DEFAULT_DARK_PALETTE: ColorPalette = {
-  background: "#0d1117",
+  background: "#010409",
   emptyCell: "#161b22",
   contributionColors: ["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353"],
-  snake1Color: "#FF8C33",
-  snake1Trail: "#CC6B1A",
-  snake2Color: "#9B66FF",
-  snake2Trail: "#7A42CC",
+  snake1Color: "#FF2D78",   // Splatoon hot pink vivid (body)
+  snake1Trail: "#FF85AA",   // lighter pink (trail)
+  snake2Color: "#00BFFF",   // Splatoon cyan vivid (body)
+  snake2Trail: "#5DD4FF",   // lighter cyan (trail)
   textColor: "#c9d1d9",
 };
 

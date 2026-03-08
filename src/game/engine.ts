@@ -66,7 +66,8 @@ export function runGame(
   });
 
   let turn = 0;
-  const maxTurns = grid.width * grid.height; // Safety limit
+  // Let the game run for a fixed number of turns (e.g., 600) to ensure a good length for the animation.
+  const maxTurns = 600;
 
   while (turn < maxTurns) {
     turn++;
@@ -109,8 +110,8 @@ export function runGame(
       score: calculateScore(grid),
     });
 
-    // Check if all cells are painted
-    if (countUnpainted(grid) === 0) break;
+    // We no longer break when all cells are painted, because snakes can paint over each other.
+    // The game ends only when `maxTurns` is reached or both snakes are dead.
   }
 
   return {

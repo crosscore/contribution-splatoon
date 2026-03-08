@@ -40,58 +40,29 @@ function randomStrategy(validMoves: Direction[]): Direction {
 }
 
 /**
- * Aggressive strategy: move toward the nearest unpainted cell using BFS
- * Greedy approach — always picks the direction with the most reachable unpainted cells
+ * Aggressive strategy: move toward the nearest enemy or unpainted cell.
+ *
+ * Key fixes vs the old version:
+ * 1. Own cells are now WALKABLE in BFS (they don't act as walls anymore).
+ *    Only unpainted/enemy cells increase the score counter.
+ *    This prevents the snake from trapping itself in its own territory.
+ * 2. BFS depth increased from 20 → 40 for wider area awareness.
+ * 3. Tie-breaking uses a small random jitter so the snake doesn't
+ *    cycle in the same corner loop indefinitely.
  */
 function aggressiveStrategy(
   snake: Snake,
   grid: Grid,
   validMoves: Direction[]
 ): Direction {
+  let bestScore = -Infinity;
   let bestDir = validMoves[0];
-  let bestScore = -1;
 
   for (const dir of validMoves) {
     const nextPos = getNextPosition(snake.position, dir);
-    // Score = number of reachable unpainted cells from this position
-    const reachable = countReachableUnpainted(nextPos, grid);
-
-    // Tiebreak: prefer directions that lead to more open space
-    if (reachable > bestScore) {
-      bestScore = reachable;
-      bestDir = dir;
-    }
-  }
-
-  return bestDir;
-}
-
-/**
- * Balanced strategy: mix of aggressive pathing and staying near center
- * Tries to keep options open by avoiding dead-end paths
- */
-function balancedStrategy(
-  snake: Snake,
-  grid: Grid,
-  validMoves: Direction[]
-): Direction {
-  let bestDir = validMoves[0];
-  let bestScore = -1;
-
-  const centerX = grid.width / 2;
-  const centerY = grid.height / 2;
-
-  for (const dir of validMoves) {
-    const nextPos = getNextPosition(snake.position, dir);
-    const reachable = countReachableUnpainted(nextPos, grid);
-
-    // Distance from center (lower is better)
-    const distFromCenter =
-      Math.abs(nextPos.x - centerX) + Math.abs(nextPos.y - centerY);
-    const maxDist = centerX + centerY;
-    const centerBonus = ((maxDist - distFromCenter) / maxDist) * 10;
-
-    const score = reachable + centerBonus;
+    const paintable = countReachablePaintable(nextPos, grid, snake.id);
+    // Small random jitter [0, 0.5) breaks ties and prevents cycles
+    const score = paintable + Math.random() * 0.5;
 
     if (score > bestScore) {
       bestScore = score;
@@ -103,11 +74,54 @@ function balancedStrategy(
 }
 
 /**
- * BFS to count reachable unpainted cells from a position
- * Limited depth to keep performance reasonable
+ * Balanced strategy: mix of aggressive pathing and staying near center
  */
-function countReachableUnpainted(start: Position, grid: Grid): number {
-  const maxDepth = 20;
+function balancedStrategy(
+  snake: Snake,
+  grid: Grid,
+  validMoves: Direction[]
+): Direction {
+  let bestScore = -Infinity;
+  let bestDir = validMoves[0];
+
+  const centerX = grid.width / 2;
+  const centerY = grid.height / 2;
+  const maxDist = centerX + centerY;
+
+  for (const dir of validMoves) {
+    const nextPos = getNextPosition(snake.position, dir);
+    const paintable = countReachablePaintable(nextPos, grid, snake.id);
+
+    const distFromCenter =
+      Math.abs(nextPos.x - centerX) + Math.abs(nextPos.y - centerY);
+    const centerBonus = ((maxDist - distFromCenter) / maxDist) * 10;
+    const score = paintable + centerBonus + Math.random() * 0.5;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestDir = dir;
+    }
+  }
+
+  return bestDir;
+}
+
+/**
+ * BFS to count reachable paintable cells from a given position.
+ *
+ * IMPORTANT: Own cells are traversable (not walls) but do NOT count toward
+ * the score. Only unpainted cells (CellOwner.None) and enemy cells score
+ * points. Enemy cells score 3× because stealing territory is the goal.
+ *
+ * This ensures the snake explores THROUGH its own territory rather than
+ * bouncing off it and getting stuck in corners.
+ */
+function countReachablePaintable(
+  start: Position,
+  grid: Grid,
+  snakeId: CellOwner.Snake1 | CellOwner.Snake2
+): number {
+  const maxDepth = 40;
   const visited = new Set<string>();
   const queue: { pos: Position; depth: number }[] = [
     { pos: start, depth: 0 },
@@ -116,12 +130,14 @@ function countReachableUnpainted(start: Position, grid: Grid): number {
 
   visited.add(`${start.x},${start.y}`);
 
+  // Count the starting cell if it's paintable
+  const startOwner = grid.cells[start.x][start.y].owner;
+  if (startOwner !== snakeId) {
+    count += startOwner === CellOwner.None ? 1 : 3;
+  }
+
   while (queue.length > 0) {
     const { pos, depth } = queue.shift()!;
-
-    if (grid.cells[pos.x][pos.y].owner === CellOwner.None) {
-      count++;
-    }
 
     if (depth >= maxDepth) continue;
 
@@ -136,14 +152,18 @@ function countReachableUnpainted(start: Position, grid: Grid): number {
       const next = getNextPosition(pos, dir);
       const key = `${next.x},${next.y}`;
 
-      if (
-        isInBounds(next, grid) &&
-        !visited.has(key) &&
-        grid.cells[next.x][next.y].owner === CellOwner.None
-      ) {
-        visited.add(key);
-        queue.push({ pos: next, depth: depth + 1 });
+      if (!isInBounds(next, grid) || visited.has(key)) continue;
+
+      visited.add(key);
+      const owner = grid.cells[next.x][next.y].owner;
+
+      // Score: enemy cells are 3×, unpainted are 1×, own cells are 0×
+      if (owner !== snakeId) {
+        count += owner === CellOwner.None ? 1 : 3;
       }
+
+      // All cells (including own) are walkable — this prevents corner trapping
+      queue.push({ pos: next, depth: depth + 1 });
     }
   }
 

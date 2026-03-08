@@ -343,8 +343,8 @@ export function renderAnimatedSVG(
   const totalHeight = gridHeightPx + 46;
   const totalWidth = gridWidthPx;
 
-  // Faster animation: 30ms per turn -> Changed to 60ms to make it slower, now 40ms for 1.5x of original (or 1.5x of previous slow version depending on interpretation, 40ms is a good sweet spot)
-  const durationPerTurn = 40;
+  // 500ms per turn → 600 turns × 500ms = 300s ≈ 5 minutes
+  const durationPerTurn = 500;
   // Add a 3 second pause at the end
   const pauseDurationMs = 3000;
   

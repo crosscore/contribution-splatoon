@@ -1,0 +1,56 @@
+name: Update Splatoon SVG
+
+on:
+  schedule:
+    # Run daily at 00:00 UTC (09:00 JST)
+    - cron: "0 0 * * *"
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  generate-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout contribution-splatoon
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate SVG (light mode)
+        run: npx tsx src/cli.ts --user crosscore --token ${{ secrets.GITHUB_TOKEN }} --output /tmp/splatoon.svg
+
+      - name: Generate SVG (dark mode)
+        run: npx tsx src/cli.ts --user crosscore --token ${{ secrets.GITHUB_TOKEN }} --output /tmp/splatoon-dark.svg --dark
+
+      - name: Push SVG to crosscore/crosscore
+        uses: dmnemec/copy_file_to_another_repo_action@main
+        env:
+          API_TOKEN_GITHUB: ${{ secrets.PROFILE_REPO_TOKEN }}
+        with:
+          source_file: "/tmp/splatoon.svg"
+          destination_repo: "crosscore/crosscore"
+          destination_branch: "main"
+          user_email: "github-actions[bot]@users.noreply.github.com"
+          user_name: "github-actions[bot]"
+          commit_message: "chore: update splatoon.svg [skip ci]"
+
+      - name: Push dark SVG to crosscore/crosscore
+        uses: dmnemec/copy_file_to_another_repo_action@main
+        env:
+          API_TOKEN_GITHUB: ${{ secrets.PROFILE_REPO_TOKEN }}
+        with:
+          source_file: "/tmp/splatoon-dark.svg"
+          destination_repo: "crosscore/crosscore"
+          destination_branch: "main"
+          user_email: "github-actions[bot]@users.noreply.github.com"
+          user_name: "github-actions[bot]"
+          commit_message: "chore: update splatoon-dark.svg [skip ci]"

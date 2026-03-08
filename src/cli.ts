@@ -40,8 +40,10 @@ async function main(): Promise<void> {
 
   const username = getArg("--user");
   const useMock = hasFlag("--mock");
-  const outputPath = getArg("--output") || "output.svg";
   const isDark = hasFlag("--dark");
+  // Default output to docs/ in the repo for easy GitHub Pages / README embedding
+  const defaultOutput = isDark ? "docs/splatoon-dark.svg" : "docs/splatoon.svg";
+  const outputPath = getArg("--output") || defaultOutput;
   const strategy = (getArg("--strategy") || "aggressive") as Strategy;
   const token = getArg("--token") || process.env.GITHUB_TOKEN;
 

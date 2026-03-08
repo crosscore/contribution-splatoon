@@ -38,10 +38,6 @@ export function isInBounds(pos: Position, grid: Grid): boolean {
   return pos.x >= 0 && pos.x < grid.width && pos.y >= 0 && pos.y < grid.height;
 }
 
-/**
- * Get all valid directions a snake can move
- * (in bounds + not already owned by any snake)
- */
 export function getValidMoves(snake: Snake, grid: Grid): Direction[] {
   if (!snake.alive) return [];
 
@@ -55,15 +51,21 @@ export function getValidMoves(snake: Snake, grid: Grid): Direction[] {
   return directions.filter((dir) => {
     const next = getNextPosition(snake.position, dir);
     if (!isInBounds(next, grid)) return false;
-    // Can move to unowned cells or cells owned by self (but prefer unowned)
-    const cell = grid.cells[next.x][next.y];
-    return cell.owner === CellOwner.None;
+
+    // 直近の数歩（例：過去3歩分）には戻れないようにする
+    // これにより、2〜3マスを無限に往復してスタックするバグを防ぐ
+    const blockLength = Math.min(snake.trail.length, 3);
+    for (let i = 1; i <= blockLength; i++) {
+      const prevPos = snake.trail[snake.trail.length - i];
+      if (prevPos && next.x === prevPos.x && next.y === prevPos.y) {
+        return false;
+      }
+    }
+
+    return true; // 壁抜けや直前のセルでなければ、どこでも（自分の色・相手の色・未塗装）OK
   });
 }
 
-/**
- * Move a snake in a direction. Mutates the snake and grid.
- */
 export function moveSnake(
   snake: Snake,
   dir: Direction,
@@ -77,13 +79,12 @@ export function moveSnake(
   }
 
   const cell = grid.cells[next.x][next.y];
-  if (cell.owner !== CellOwner.None) {
-    snake.alive = false;
-    return;
-  }
 
-  // Paint the cell
-  cell.owner = snake.id;
+  // Paint the cell (相手のセルまたは未塗装なら上書きになる)
+  // すでに自分の色なら再塗装はしない
+  if (cell.owner !== snake.id) {
+    cell.owner = snake.id;
+  }
 
   // Move snake
   snake.position = next;
