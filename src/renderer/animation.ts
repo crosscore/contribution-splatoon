@@ -18,7 +18,8 @@ function renderScoreBar(
   gridHeight: number,
   config: RenderConfig,
   totalDurationSec: number,
-  gameEndFraction: number
+  gameEndFraction: number,
+  winner: GameWinner
 ): string {
   const { palette, frameDuration } = config;
   const y = gridHeight + 20;
@@ -49,8 +50,8 @@ function renderScoreBar(
 
     values1.push(w1.toFixed(1));
     values2.push(w2.toFixed(1));
-    text1.push(`◆ ${pct1}%`);
-    text2.push(`◆ ${pct2}%`);
+    text1.push(`▸ ${pct1}%`);
+    text2.push(`▸ ${pct2}%`);
     
     keyTimes.push(((sampledCount / (result.frames.length / step)) * gameEndFraction).toFixed(6));
     sampledCount++;
@@ -66,8 +67,8 @@ function renderScoreBar(
   
   values1.push(lastW1.toFixed(1));
   values2.push(lastW2.toFixed(1));
-  text1.push(`◆ ${lastPct1}%`);
-  text2.push(`◆ ${lastPct2}%`);
+  text1.push(`▸ ${lastPct1}%`);
+  text2.push(`▸ ${lastPct2}%`);
   keyTimes.push("1.000000");
 
   const valStr1 = values1.join(";");
@@ -92,7 +93,7 @@ function renderScoreBar(
       const frame = result.frames[i];
       const score = frame.score;
       const pct = score.total > 0 ? ((score[snakeKey] / score.total) * 100).toFixed(1) : "0.0";
-      const text = `◆ ${pct}%`;
+      const text = `▸ ${pct}%`;
       if (text !== lastText) {
         // Close the previous sample
         if (samples.length > 0) {
@@ -131,6 +132,29 @@ function renderScoreBar(
   const animatedText1 = renderAnimatedText(samples1, "0", "start", palette.snake1Color);
   const animatedText2 = renderAnimatedText(samples2, `${barWidth}`, "end", palette.snake2Color);
 
+  // Winner bar flash: pulsing opacity on the winning side during the 10s pause
+  const flashPulseDur = "1.2s";
+  const winnerFlashStart = gameEndFraction;
+  // Opacity goes from 0 (hidden) to pulsing between 0.5-1.0 after game ends
+  const flashOpacityValues = "0;0;0.5;1;0.5";
+  const flashOpacityKeyTimes = `0.000000;${winnerFlashStart.toFixed(6)};${Math.min(winnerFlashStart + 0.001, 0.9999).toFixed(6)};1.000000;1.000000`;
+
+  // Build a glowing overlay rect for the winner's bar side
+  let winnerFlash = "";
+  if (winner === "snake1") {
+    winnerFlash = `
+    <!-- Winner flash overlay (Snake 1) -->
+    <rect x="0" y="${y}" width="${lastW1.toFixed(1)}" height="${barHeight}" rx="4" fill="${palette.snake1Color}" opacity="0">
+      <animate attributeName="opacity" values="0;0;0.35;0.15;0.35" keyTimes="0.000000;${winnerFlashStart.toFixed(6)};${Math.min(winnerFlashStart + 0.001, 0.9999).toFixed(6)};0.999999;1.000000" dur="${totalDurationSec}s" repeatCount="indefinite" calcMode="linear" />
+    </rect>`;
+  } else if (winner === "snake2") {
+    winnerFlash = `
+    <!-- Winner flash overlay (Snake 2) -->
+    <rect x="${(barWidth - lastW2).toFixed(1)}" y="${y}" width="${lastW2.toFixed(1)}" height="${barHeight}" rx="4" fill="${palette.snake2Color}" opacity="0">
+      <animate attributeName="opacity" values="0;0;0.35;0.15;0.35" keyTimes="0.000000;${winnerFlashStart.toFixed(6)};${Math.min(winnerFlashStart + 0.001, 0.9999).toFixed(6)};0.999999;1.000000" dur="${totalDurationSec}s" repeatCount="indefinite" calcMode="linear" />
+    </rect>`;
+  }
+
   return `
     <!-- Score bar background -->
     <rect x="0" y="${y}" width="${barWidth}" height="${barHeight}" rx="4" fill="${palette.emptyCell}" filter="url(#glow-light)" />
@@ -145,6 +169,7 @@ function renderScoreBar(
       <animate attributeName="width" values="${valStr2}" keyTimes="${timeStr}" dur="${totalDurationSec}s" repeatCount="indefinite" calcMode="linear" />
       <animate attributeName="x" values="${values2.map(w => (barWidth - parseFloat(w)).toFixed(1)).join(";")}" keyTimes="${timeStr}" dur="${totalDurationSec}s" repeatCount="indefinite" calcMode="linear" />
     </rect>
+${winnerFlash}
 
     <!-- Center Divider -->
     <rect x="${(barWidth / 2) - 1 }" y="${y - 1}" width="2" height="${barHeight + 2}" fill="${palette.textColor}" opacity="0.4" rx="1" />
@@ -407,10 +432,10 @@ function renderWinnerBanner(
   let color: string;
 
   if (winner === "snake1") {
-    label = "◆ Snake 1 WIN!";
+    label = "Snake 1 WIN!";
     color = palette.snake1Color;
   } else if (winner === "snake2") {
-    label = "◆ Snake 2 WIN!";
+    label = "Snake 2 WIN!";
     color = palette.snake2Color;
   } else {
     label = "DRAW!";
@@ -430,24 +455,46 @@ function renderWinnerBanner(
 
   // Pulse animation cycle: ~1.5s per breath during the 10s pause
   const pulseDur = "1.5s";
+  const fastPulseDur = "0.8s";
+
+  // SVG diamond shape for the winner banner (drawn as a polygon)
+  // Diamond sits to the left of the winner text
+  const diamondSize = 8;
+  const diamondCx = cx - 90; // position to the left of the text
+  const diamondCy = cy + 18;
+  const diamondPoints = `${diamondCx},${diamondCy - diamondSize} ${diamondCx + diamondSize},${diamondCy} ${diamondCx},${diamondCy + diamondSize} ${diamondCx - diamondSize},${diamondCy}`;
+
+  // For DRAW, skip the diamond
+  const diamondSvg = winner !== "draw" ? `
+      <!-- SVG Diamond icon -->
+      <polygon points="${diamondPoints}" fill="${color}" filter="url(#glow-text)">
+        <animate attributeName="opacity" values="0.6;1;0.6" dur="${fastPulseDur}" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
+      </polygon>
+      <polygon points="${diamondCx},${diamondCy - diamondSize + 2} ${diamondCx + diamondSize - 2},${diamondCy} ${diamondCx},${diamondCy + diamondSize - 2} ${diamondCx - diamondSize + 2},${diamondCy}" fill="white" opacity="0.3" />
+  ` : "";
 
   return `
     <!-- Winner banner -->
     <g id="winner-banner" opacity="0">
       <!-- Backdrop with pulsing border -->
       <rect x="${cx - 140}" y="${cy - 35}" width="280" height="70" rx="8" fill="${bgColor}" stroke="${color}" stroke-width="3" filter="url(#glow-heavy)">
-        <animate attributeName="stroke-width" values="3;5;3" dur="${pulseDur}" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
-        <animate attributeName="stroke-opacity" values="0.8;1;0.8" dur="${pulseDur}" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
+        <animate attributeName="stroke-width" values="3;6;3" dur="${pulseDur}" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
+        <animate attributeName="stroke-opacity" values="0.6;1;0.6" dur="${pulseDur}" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
       </rect>
 
       <!-- Sub-label -->
       <text x="${cx}" y="${cy - 8}" font-family="'Segoe UI', system-ui, sans-serif" font-size="12" fill="${palette.textColor}" font-weight="bold" letter-spacing="3" text-anchor="middle" dominant-baseline="middle">GAME FINISHED</text>
 
+      ${diamondSvg}
+
       <!-- Winner label with pulsing glow -->
-      <text x="${cx}" y="${cy + 18}" font-family="'Segoe UI', system-ui, sans-serif" font-size="24" fill="${color}" font-weight="900" text-anchor="middle" dominant-baseline="middle" filter="url(#glow-text)">
+      <text x="${cx + (winner !== "draw" ? 8 : 0)}" y="${cy + 18}" font-family="'Segoe UI', system-ui, sans-serif" font-size="24" fill="${color}" font-weight="900" text-anchor="middle" dominant-baseline="middle" filter="url(#glow-text)">
         ${label}
-        <animate attributeName="opacity" values="0.75;1;0.75" dur="${pulseDur}" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
+        <animate attributeName="opacity" values="0.7;1;0.7" dur="${pulseDur}" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
       </text>
+
+      <!-- Banner scale pulse -->
+      <animateTransform attributeName="transform" type="scale" values="1 1;1.03 1.03;1 1" dur="2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" additive="sum" />
 
       <!-- Banner fade-in timed to game end -->
       <animate attributeName="opacity" values="${opacityValues}" keyTimes="${opacityKeyTimes}" dur="${totalDurationSec}s" repeatCount="indefinite" calcMode="discrete" />
@@ -487,7 +534,7 @@ export function renderAnimatedSVG(
 
   const baseGrid = renderBaseGrid(result, config, totalDurationSec, gameEndFraction);
   const snakes = renderAnimatedSnakes(result, config, totalDurationSec, gameEndFraction);
-  const scoreBar = renderScoreBar(result, totalWidth, gridHeightPx, config, totalDurationSec, gameEndFraction);
+  const scoreBar = renderScoreBar(result, totalWidth, gridHeightPx, config, totalDurationSec, gameEndFraction, result.winner);
   const winnerBanner = renderWinnerBanner(result.winner, totalWidth, gridHeightPx, config, totalDurationSec, gameEndFraction);
 
   return `<svg
@@ -517,10 +564,11 @@ export function renderAnimatedSVG(
       <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="rgba(0,0,0,0.4)" />
     </filter>
     
-    <!-- Glowing text filter -->
-    <filter id="glow-text" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="1.5" result="blur" />
+    <!-- Glowing text filter (strong glow for winner banner) -->
+    <filter id="glow-text" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
       <feMerge>
+        <feMergeNode in="blur" />
         <feMergeNode in="blur" />
         <feMergeNode in="SourceGraphic" />
       </feMerge>
