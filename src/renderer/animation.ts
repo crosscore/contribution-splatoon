@@ -428,12 +428,28 @@ function renderWinnerBanner(
   // Semi-transparent backdrop
   const bgColor = config.darkMode ? "rgba(1,4,9,0.9)" : "rgba(255,255,255,0.95)";
 
+  // Pulse animation cycle: ~1.5s per breath during the 10s pause
+  const pulseDur = "1.5s";
+
   return `
     <!-- Winner banner -->
     <g id="winner-banner" opacity="0">
-      <rect x="${cx - 140}" y="${cy - 35}" width="280" height="70" rx="8" fill="${bgColor}" stroke="${color}" stroke-width="3" filter="url(#glow-heavy)" />
+      <!-- Backdrop with pulsing border -->
+      <rect x="${cx - 140}" y="${cy - 35}" width="280" height="70" rx="8" fill="${bgColor}" stroke="${color}" stroke-width="3" filter="url(#glow-heavy)">
+        <animate attributeName="stroke-width" values="3;5;3" dur="${pulseDur}" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
+        <animate attributeName="stroke-opacity" values="0.8;1;0.8" dur="${pulseDur}" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
+      </rect>
+
+      <!-- Sub-label -->
       <text x="${cx}" y="${cy - 8}" font-family="'Segoe UI', system-ui, sans-serif" font-size="12" fill="${palette.textColor}" font-weight="bold" letter-spacing="3" text-anchor="middle" dominant-baseline="middle">GAME FINISHED</text>
-      <text x="${cx}" y="${cy + 18}" font-family="'Segoe UI', system-ui, sans-serif" font-size="24" fill="${color}" font-weight="900" text-anchor="middle" dominant-baseline="middle" filter="url(#glow-text)">${label}</text>
+
+      <!-- Winner label with pulsing glow -->
+      <text x="${cx}" y="${cy + 18}" font-family="'Segoe UI', system-ui, sans-serif" font-size="24" fill="${color}" font-weight="900" text-anchor="middle" dominant-baseline="middle" filter="url(#glow-text)">
+        ${label}
+        <animate attributeName="opacity" values="0.75;1;0.75" dur="${pulseDur}" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
+      </text>
+
+      <!-- Banner fade-in timed to game end -->
       <animate attributeName="opacity" values="${opacityValues}" keyTimes="${opacityKeyTimes}" dur="${totalDurationSec}s" repeatCount="indefinite" calcMode="discrete" />
     </g>
   `;
