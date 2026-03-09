@@ -80,12 +80,17 @@ export interface GameScore {
   total: number;
 }
 
+/** Winner of the game */
+export type GameWinner = "snake1" | "snake2" | "draw";
+
 /** Full game result */
 export interface GameResult {
   /** All frames from start to finish */
   frames: GameFrame[];
   /** Final score */
   finalScore: GameScore;
+  /** Who won the game */
+  winner: GameWinner;
 }
 
 /** AI strategy type */

@@ -77,6 +77,8 @@ async function main(): Promise<void> {
   console.log(`🎮 Running game (strategy: ${strategy})...`);
   const result = runGame(grid, gameConfig);
   console.log(`✅ Finished in ${result.frames.length} turns`);
+  const winnerLabel = result.winner === "snake1" ? "🏆 Snake 1" : result.winner === "snake2" ? "🏆 Snake 2" : "🤝 Draw";
+  console.log(`   Winner: ${winnerLabel}`);
   console.log(
     `   Score: Snake1 ${result.finalScore.snake1} (${((result.finalScore.snake1 / result.finalScore.total) * 100).toFixed(1)}%) vs Snake2 ${result.finalScore.snake2} (${((result.finalScore.snake2 / result.finalScore.total) * 100).toFixed(1)}%)`
   );

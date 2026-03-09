@@ -6,6 +6,7 @@ import {
   GameFrame,
   GameResult,
   GameConfig,
+  GameWinner,
   DEFAULT_GAME_CONFIG,
 } from "../types";
 import { createSnake, moveSnake, getValidMoves } from "./snake";
@@ -130,19 +131,31 @@ export function runGame(
     }
 
     // Record frame
+    const currentScore = calculateScore(grid);
     frames.push({
       turn,
       grid: cloneGrid(grid),
       snakes: [cloneSnake(snake1), cloneSnake(snake2)],
-      score: calculateScore(grid),
+      score: currentScore,
     });
 
-    // We no longer break when all cells are painted, because snakes can paint over each other.
-    // The game ends only when `maxTurns` is reached or both snakes are dead.
+    // End the game when all unpainted cells have been covered
+    if (countUnpainted(grid) === 0) {
+      break;
+    }
   }
+
+  const finalScore = calculateScore(grid);
+  const winner: GameWinner =
+    finalScore.snake1 > finalScore.snake2
+      ? "snake1"
+      : finalScore.snake2 > finalScore.snake1
+        ? "snake2"
+        : "draw";
 
   return {
     frames,
-    finalScore: calculateScore(grid),
+    finalScore,
+    winner,
   };
 }

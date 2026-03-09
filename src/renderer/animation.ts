@@ -4,6 +4,7 @@ import {
   RenderConfig,
   DEFAULT_RENDER_CONFIG,
   GameScore,
+  GameWinner,
   CellOwner,
 } from "../types";
 import { getGridDimensions } from "./grid";
@@ -21,7 +22,7 @@ function renderScoreBar(
   const { palette, frameDuration } = config;
   const y = gridHeight + 20;
   const barWidth = svgWidth;
-  const barHeight = 6;
+  const barHeight = 8;
 
   // We need to build a list of values for the animation
   // To keep the animation size small, we only sample every N frames, same as the snakes
@@ -131,18 +132,21 @@ function renderScoreBar(
 
   return `
     <!-- Score bar background -->
-    <rect x="0" y="${y}" width="${barWidth}" height="${barHeight}" rx="3" fill="${palette.emptyCell}" />
+    <rect x="0" y="${y}" width="${barWidth}" height="${barHeight}" rx="4" fill="${palette.emptyCell}" filter="url(#glow-light)" />
     
     <!-- Snake 1 progress -->
-    <rect x="0" y="${y}" width="0" height="${barHeight}" rx="3" fill="${palette.snake1Trail}">
+    <rect x="0" y="${y}" width="0" height="${barHeight}" rx="4" fill="${palette.snake1Trail}">
       <animate attributeName="width" values="${valStr1}" keyTimes="${timeStr}" dur="${totalDurationSec}s" repeatCount="indefinite" calcMode="linear" />
     </rect>
     
     <!-- Snake 2 progress -->
-    <rect x="${barWidth - lastW2}" y="${y}" width="0" height="${barHeight}" rx="3" fill="${palette.snake2Trail}">
+    <rect x="${barWidth - lastW2}" y="${y}" width="0" height="${barHeight}" rx="4" fill="${palette.snake2Trail}">
       <animate attributeName="width" values="${valStr2}" keyTimes="${timeStr}" dur="${totalDurationSec}s" repeatCount="indefinite" calcMode="linear" />
       <animate attributeName="x" values="${values2.map(w => (barWidth - parseFloat(w)).toFixed(1)).join(";")}" keyTimes="${timeStr}" dur="${totalDurationSec}s" repeatCount="indefinite" calcMode="linear" />
     </rect>
+
+    <!-- Center Divider -->
+    <rect x="${(barWidth / 2) - 1 }" y="${y - 1}" width="2" height="${barHeight + 2}" fill="${palette.textColor}" opacity="0.4" rx="1" />
 
     <!-- Animated score labels -->
 ${animatedText1}
@@ -350,7 +354,7 @@ function renderAnimatedSnakes(result: GameResult, config: RenderConfig, totalDur
 
   return `
     <!-- Snake 1 -->
-    <g>
+    <g filter="url(#glow)">
       ${snake1Tail}
       <circle cx="0" cy="0" r="${r}" fill="${palette.snake1Color}">
         <animate attributeName="cx" values="${s1x.join(";")}" keyTimes="${tStr}" dur="${totalDurationSec}s" repeatCount="indefinite" calcMode="linear" />
@@ -367,7 +371,7 @@ function renderAnimatedSnakes(result: GameResult, config: RenderConfig, totalDur
     </g>
 
     <!-- Snake 2 -->
-    <g>
+    <g filter="url(#glow)">
       ${snake2Tail}
       <circle cx="0" cy="0" r="${r}" fill="${palette.snake2Color}">
         <animate attributeName="cx" values="${s2x.join(";")}" keyTimes="${tStr}" dur="${totalDurationSec}s" repeatCount="indefinite" calcMode="linear" />
@@ -381,6 +385,58 @@ function renderAnimatedSnakes(result: GameResult, config: RenderConfig, totalDur
         <animate attributeName="cx" values="${s2x.map(x => (parseFloat(x) + eyeOffset).toFixed(1)).join(";")}" keyTimes="${tStr}" dur="${totalDurationSec}s" repeatCount="indefinite" calcMode="linear" />
         <animate attributeName="cy" values="${s2y.map(y => (parseFloat(y) - eyeOffset).toFixed(1)).join(";")}" keyTimes="${tStr}" dur="${totalDurationSec}s" repeatCount="indefinite" calcMode="linear" />
       </circle>
+    </g>
+  `;
+}
+
+/**
+ * Render a winner banner that fades in at the end of the animation
+ */
+function renderWinnerBanner(
+  winner: GameWinner,
+  svgWidth: number,
+  gridHeightPx: number,
+  config: RenderConfig,
+  totalDurationSec: number
+): string {
+  const { palette } = config;
+
+  let label: string;
+  let color: string;
+
+  if (winner === "snake1") {
+    label = "◆ Snake 1 WIN!";
+    color = palette.snake1Color;
+  } else if (winner === "snake2") {
+    label = "◆ Snake 2 WIN!";
+    color = palette.snake2Color;
+  } else {
+    label = "DRAW!";
+    color = palette.textColor;
+  }
+
+  const cx = svgWidth / 2;
+  const cy = gridHeightPx / 2;
+
+  // The banner should fade in exactly at the time the game finishes.
+  // We use precise ratio of total animation ms versus full duration including pause.
+  const totalAnimationMs = totalDurationSec * 1000 - 10000; 
+  const fadeStart = totalAnimationMs / (totalDurationSec * 1000);
+  const opacityValues = "0;0;1;1";
+  
+  // Transition window of ~0.005
+  const opacityKeyTimes = `0.000000;${fadeStart.toFixed(6)};${Math.min(fadeStart + 0.005, 0.9999).toFixed(6)};1.000000`;
+
+  // Semi-transparent backdrop
+  const bgColor = config.darkMode ? "rgba(1,4,9,0.9)" : "rgba(255,255,255,0.95)";
+
+  return `
+    <!-- Winner banner -->
+    <g id="winner-banner" opacity="0">
+      <rect x="${cx - 140}" y="${cy - 35}" width="280" height="70" rx="8" fill="${bgColor}" stroke="${color}" stroke-width="3" filter="url(#glow-heavy)" />
+      <text x="${cx}" y="${cy - 8}" font-family="'Segoe UI', system-ui, sans-serif" font-size="12" fill="${palette.textColor}" font-weight="bold" letter-spacing="3" text-anchor="middle" dominant-baseline="middle">GAME FINISHED</text>
+      <text x="${cx}" y="${cy + 18}" font-family="'Segoe UI', system-ui, sans-serif" font-size="24" fill="${color}" font-weight="900" text-anchor="middle" dominant-baseline="middle" filter="url(#glow-text)">${label}</text>
+      <animate attributeName="opacity" values="${opacityValues}" keyTimes="${opacityKeyTimes}" dur="${totalDurationSec}s" repeatCount="indefinite" calcMode="discrete" />
     </g>
   `;
 }
@@ -405,10 +461,10 @@ export function renderAnimatedSVG(
   const totalHeight = gridHeightPx + 46;
   const totalWidth = gridWidthPx;
 
-  // 100ms per turn → 3000 turns × 100ms = 300s = 5 minutes
+  // 100ms per turn
   const durationPerTurn = 100;
-  // Add a 3 second pause at the end
-  const pauseDurationMs = 3000;
+  // Increase pause to 10 seconds to hold the winner banner
+  const pauseDurationMs = 10000;
   
   const totalAnimationMs = result.frames.length * durationPerTurn;
   const totalDurationSec = (totalAnimationMs + pauseDurationMs) / 1000;
@@ -416,6 +472,7 @@ export function renderAnimatedSVG(
   const baseGrid = renderBaseGrid(result, config, totalDurationSec);
   const snakes = renderAnimatedSnakes(result, config, totalDurationSec);
   const scoreBar = renderScoreBar(result, totalWidth, gridHeightPx, config, totalDurationSec);
+  const winnerBanner = renderWinnerBanner(result.winner, totalWidth, gridHeightPx, config, totalDurationSec);
 
   return `<svg
   xmlns="http://www.w3.org/2000/svg"
@@ -423,6 +480,37 @@ export function renderAnimatedSVG(
   height="${totalHeight}"
   viewBox="0 0 ${totalWidth} ${totalHeight}"
 >
+  <defs>
+    <!-- Light glow for minimal UI elements like the score bar -->
+    <filter id="glow-light" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1.5" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    
+    <!-- Standard neon glow for snake bodies -->
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.5" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- Heavy drop-shadow for the winner banner -->
+    <filter id="glow-heavy" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="rgba(0,0,0,0.4)" />
+    </filter>
+    
+    <!-- Glowing text filter -->
+    <filter id="glow-text" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1.5" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
   <style>
     /* Transparent background by default. Host page (GitHub) will provide the background. */
     svg {} 
@@ -442,6 +530,8 @@ export function renderAnimatedSVG(
   <g id="snakes">
     ${snakes}
   </g>
+
+  ${winnerBanner}
 </svg>`;
 }
 
