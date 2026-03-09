@@ -1,6 +1,8 @@
 name: Update Splatoon SVG
 
 on:
+  push:
+    branches: [main]
   schedule:
     # Run daily at 00:00 UTC (09:00 JST)
     - cron: "0 0 * * *"

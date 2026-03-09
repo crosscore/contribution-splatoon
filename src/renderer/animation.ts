@@ -50,8 +50,8 @@ function renderScoreBar(
 
     values1.push(w1.toFixed(1));
     values2.push(w2.toFixed(1));
-    text1.push(`▸ ${pct1}%`);
-    text2.push(`▸ ${pct2}%`);
+    text1.push(`◆ ${pct1}%`);
+    text2.push(`◆ ${pct2}%`);
     
     keyTimes.push(((sampledCount / (result.frames.length / step)) * gameEndFraction).toFixed(6));
     sampledCount++;
@@ -67,8 +67,8 @@ function renderScoreBar(
   
   values1.push(lastW1.toFixed(1));
   values2.push(lastW2.toFixed(1));
-  text1.push(`▸ ${lastPct1}%`);
-  text2.push(`▸ ${lastPct2}%`);
+  text1.push(`◆ ${lastPct1}%`);
+  text2.push(`◆ ${lastPct2}%`);
   keyTimes.push("1.000000");
 
   const valStr1 = values1.join(";");
@@ -93,7 +93,7 @@ function renderScoreBar(
       const frame = result.frames[i];
       const score = frame.score;
       const pct = score.total > 0 ? ((score[snakeKey] / score.total) * 100).toFixed(1) : "0.0";
-      const text = `▸ ${pct}%`;
+      const text = `◆ ${pct}%`;
       if (text !== lastText) {
         // Close the previous sample
         if (samples.length > 0) {
@@ -493,8 +493,6 @@ function renderWinnerBanner(
         <animate attributeName="opacity" values="0.7;1;0.7" dur="${pulseDur}" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
       </text>
 
-      <!-- Banner scale pulse -->
-      <animateTransform attributeName="transform" type="scale" values="1 1;1.03 1.03;1 1" dur="2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" additive="sum" />
 
       <!-- Banner fade-in timed to game end -->
       <animate attributeName="opacity" values="${opacityValues}" keyTimes="${opacityKeyTimes}" dur="${totalDurationSec}s" repeatCount="indefinite" calcMode="discrete" />
