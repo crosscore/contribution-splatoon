@@ -17,7 +17,8 @@ function renderScoreBar(
   svgWidth: number,
   gridHeight: number,
   config: RenderConfig,
-  totalDurationSec: number
+  totalDurationSec: number,
+  gameEndFraction: number
 ): string {
   const { palette, frameDuration } = config;
   const y = gridHeight + 20;
@@ -51,7 +52,7 @@ function renderScoreBar(
     text1.push(`◆ ${pct1}%`);
     text2.push(`◆ ${pct2}%`);
     
-    keyTimes.push((sampledCount / (result.frames.length / step)).toFixed(6));
+    keyTimes.push(((sampledCount / (result.frames.length / step)) * gameEndFraction).toFixed(6));
     sampledCount++;
   }
 
@@ -95,9 +96,9 @@ function renderScoreBar(
       if (text !== lastText) {
         // Close the previous sample
         if (samples.length > 0) {
-          samples[samples.length - 1].endTime = i / result.frames.length;
+          samples[samples.length - 1].endTime = (i / result.frames.length) * gameEndFraction;
         }
-        samples.push({ text, startTime: i / result.frames.length, endTime: 1.0 });
+        samples.push({ text, startTime: (i / result.frames.length) * gameEndFraction, endTime: 1.0 });
         lastText = text;
       }
     }
@@ -157,7 +158,7 @@ ${animatedText2}
 /**
  * Render the static base grid with inline SVG animations for cell coloring
  */
-function renderBaseGrid(result: GameResult, config: RenderConfig, totalDurationSec: number): string {
+function renderBaseGrid(result: GameResult, config: RenderConfig, totalDurationSec: number, gameEndFraction: number): string {
   const { cellSize, cellGap, cellRadius, palette } = config;
   const initialGrid = result.frames[0].grid;
   const totalFrames = result.frames.length;
@@ -221,7 +222,7 @@ function renderBaseGrid(result: GameResult, config: RenderConfig, totalDurationS
         let currentColor = initialColor;
         for (let j = 0; j < events.length; j++) {
           const event = events[j];
-          const tVal = event.turn / totalFrames;
+          const tVal = (event.turn / totalFrames) * gameEndFraction;
           const tFixed = parseFloat(tVal.toFixed(6));
 
           // Avoid duplicate keyTimes (clamp to slightly after previous)
@@ -264,7 +265,7 @@ function renderBaseGrid(result: GameResult, config: RenderConfig, totalDurationS
 /**
  * Generate Snake movement animations using SVG <animate>
  */
-function renderAnimatedSnakes(result: GameResult, config: RenderConfig, totalDurationSec: number): string {
+function renderAnimatedSnakes(result: GameResult, config: RenderConfig, totalDurationSec: number, gameEndFraction: number): string {
   const { cellSize, cellGap, palette } = config;
 
   // Snake 1
@@ -292,7 +293,7 @@ function renderAnimatedSnakes(result: GameResult, config: RenderConfig, totalDur
     s2x.push((p2.x * (cellSize + cellGap) + cellSize / 2).toFixed(1));
     s2y.push((p2.y * (cellSize + cellGap) + cellSize / 2).toFixed(1));
     
-    keyTimes.push((sampledCount / (result.frames.length / step)).toFixed(6));
+    keyTimes.push(((sampledCount / (result.frames.length / step)) * gameEndFraction).toFixed(6));
     sampledCount++;
   }
 
@@ -397,7 +398,8 @@ function renderWinnerBanner(
   svgWidth: number,
   gridHeightPx: number,
   config: RenderConfig,
-  totalDurationSec: number
+  totalDurationSec: number,
+  gameEndFraction: number
 ): string {
   const { palette } = config;
 
@@ -418,13 +420,9 @@ function renderWinnerBanner(
   const cx = svgWidth / 2;
   const cy = gridHeightPx / 2;
 
-  // The banner should fade in exactly at the time the game finishes.
-  // We use precise ratio of total animation ms versus full duration including pause.
-  const totalAnimationMs = totalDurationSec * 1000 - 10000; 
-  const fadeStart = totalAnimationMs / (totalDurationSec * 1000);
+  // The banner fades in exactly when the game animation finishes (= gameEndFraction)
+  const fadeStart = gameEndFraction;
   const opacityValues = "0;0;1;1";
-  
-  // Transition window of ~0.005
   const opacityKeyTimes = `0.000000;${fadeStart.toFixed(6)};${Math.min(fadeStart + 0.005, 0.9999).toFixed(6)};1.000000`;
 
   // Semi-transparent backdrop
@@ -468,11 +466,13 @@ export function renderAnimatedSVG(
   
   const totalAnimationMs = result.frames.length * durationPerTurn;
   const totalDurationSec = (totalAnimationMs + pauseDurationMs) / 1000;
+  // Fraction of total duration that is actual gameplay (before the pause)
+  const gameEndFraction = totalAnimationMs / (totalAnimationMs + pauseDurationMs);
 
-  const baseGrid = renderBaseGrid(result, config, totalDurationSec);
-  const snakes = renderAnimatedSnakes(result, config, totalDurationSec);
-  const scoreBar = renderScoreBar(result, totalWidth, gridHeightPx, config, totalDurationSec);
-  const winnerBanner = renderWinnerBanner(result.winner, totalWidth, gridHeightPx, config, totalDurationSec);
+  const baseGrid = renderBaseGrid(result, config, totalDurationSec, gameEndFraction);
+  const snakes = renderAnimatedSnakes(result, config, totalDurationSec, gameEndFraction);
+  const scoreBar = renderScoreBar(result, totalWidth, gridHeightPx, config, totalDurationSec, gameEndFraction);
+  const winnerBanner = renderWinnerBanner(result.winner, totalWidth, gridHeightPx, config, totalDurationSec, gameEndFraction);
 
   return `<svg
   xmlns="http://www.w3.org/2000/svg"
