@@ -73,7 +73,7 @@ The strong asymmetry ensures the snake always prefers fresh ground over repainti
 
 #### Factor 3: Global Compass (+10)
 
-Scans the **entire grid** to find the center of mass of all remaining unpainted cells, then rewards moving in that cardinal direction. This gives the snake a "sense of direction" beyond the BFS horizon.
+Scans the **entire grid** to find the center of mass of all remaining unpainted cells, then rewards moving in that cardinal direction. This gives the snake a "sense of direction" beyond the BFS horizon. In **nav mode**, the bonus doubles to **+20** for stronger pull toward distant unpainted regions.
 
 #### Factor 4: Recently-Visited Penalty (-8 / -15)
 
@@ -97,6 +97,8 @@ When within **Manhattan distance 5** of the opponent:
 - Moving **away**: +10 bonus
 - Moving **toward**: -8 penalty
 
+In **nav mode** (when heading toward distant unpainted cells), these values are reduced to **+3 / -3** so that unpainted-cell navigation dominates over opponent avoidance.
+
 This separates the two snakes, ensuring they explore different regions of the grid rather than fighting over the same area.
 
 #### Factor 7: Sweep Direction Continuity (+2)
@@ -109,16 +111,20 @@ A minor penalty for moving to grid edges, subtly encouraging interior exploratio
 
 #### Factor 9: Long-Range Navigation (+30 / -10)
 
-**"Nav Mode"** activates when the BFS paintable score from the snake's current position is below 1.0, meaning the snake is surrounded by its own territory with no nearby targets.
+**"Nav Mode"** activates when the BFS paintable score from the snake's current position is below **3.0**, meaning the snake's local area has few remaining unpainted targets.
 
 In nav mode:
-- A full-grid BFS finds the **nearest unpainted or enemy cell** and traces the shortest path back to the snake
+- A full-grid **two-pass BFS** finds the nearest target cell:
+  - **Pass 1**: Search for `CellOwner.None` (unpainted) cells only
+  - **Pass 2**: Fall back to enemy cells if no unpainted cells remain
 - The direction of the **first step** on that shortest path receives a **+30 bonus**
 - All other directions receive a **-10 penalty**
 - The recently-visited penalty window extends from 15 to **30 steps** to prevent backtracking
 - The recently-visited penalty itself increases (-8 → **-15**)
+- The compass bonus doubles (+10 → **+20**)
+- The opponent avoidance factor is reduced (+10/-8 → **+3/-3**)
 
-This eliminates the "circling in own territory" problem: instead of wandering aimlessly when all nearby cells are painted, the snake marches purposefully toward the nearest target. The ε-greedy mechanism still provides natural variation.
+The two-pass BFS is critical: it ensures the snake always prioritizes reaching **unpainted cells** over repainting enemy territory. This eliminates the "chase-loop" scenario where two snakes circle each other's territory while distant unpainted cells remain unvisited.
 
 ### Final Score
 

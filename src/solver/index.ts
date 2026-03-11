@@ -124,7 +124,7 @@ function aggressiveStrategy(
   // Pre-compute a sample BFS to determine if we're in "nav mode"
   // (surrounded by own territory with no nearby paintable cells)
   const samplePaintable = countReachableWeighted(snake.position, grid, snake.id);
-  const inNavMode = samplePaintable < 1.0;
+  const inNavMode = samplePaintable < 3.0;
 
   // In nav mode, extend the recently-visited window to avoid revisiting
   const recentWindow = inNavMode ? 30 : 15;
@@ -162,7 +162,7 @@ function aggressiveStrategy(
     // 3. Global compass: bonus for heading toward unpainted regions
     let compassBonus = 0;
     if (unpaintedDir && dir === unpaintedDir) {
-      compassBonus = 10;
+      compassBonus = inNavMode ? 20 : 10;
     }
 
     // 4. Recently-visited penalty (stronger in nav mode)
@@ -197,16 +197,17 @@ function aggressiveStrategy(
       edgePenalty = -1;
     }
 
-    // 8. Opponent avoidance: if near the opponent, strongly prefer moving away
+    // 8. Opponent avoidance: if near the opponent, prefer moving away
+    //    In nav mode, reduce this factor so unpainted-cell navigation dominates
     let opponentBonus = 0;
     if (opponentPos) {
       const currentDist = Math.abs(snake.position.x - opponentPos.x) + Math.abs(snake.position.y - opponentPos.y);
       if (currentDist <= 5) {
         const nextDist = Math.abs(nextPos.x - opponentPos.x) + Math.abs(nextPos.y - opponentPos.y);
         if (nextDist > currentDist) {
-          opponentBonus = 10; // move away from opponent
+          opponentBonus = inNavMode ? 3 : 10; // move away from opponent
         } else if (nextDist < currentDist) {
-          opponentBonus = -8; // penalize moving toward opponent
+          opponentBonus = inNavMode ? -3 : -8; // penalize moving toward opponent
         }
       }
     }
@@ -258,7 +259,7 @@ function balancedStrategy(
 
   // Pre-compute nav mode detection
   const samplePaintable = countReachableWeighted(snake.position, grid, snake.id);
-  const inNavMode = samplePaintable < 1.0;
+  const inNavMode = samplePaintable < 3.0;
 
   const recentWindow = inNavMode ? 30 : 15;
   const recentSet = new Set<string>();
@@ -292,7 +293,7 @@ function balancedStrategy(
 
     let compassBonus = 0;
     if (unpaintedDir && dir === unpaintedDir) {
-      compassBonus = 8;
+      compassBonus = inNavMode ? 16 : 8;
     }
 
     let recentPenalty = 0;
@@ -317,9 +318,9 @@ function balancedStrategy(
       if (currentDist <= 5) {
         const nextDist = Math.abs(nextPos.x - opponentPos.x) + Math.abs(nextPos.y - opponentPos.y);
         if (nextDist > currentDist) {
-          opponentBonus = 8;
+          opponentBonus = inNavMode ? 3 : 8;
         } else if (nextDist < currentDist) {
-          opponentBonus = -6;
+          opponentBonus = inNavMode ? -3 : -6;
         }
       }
     }
@@ -428,8 +429,27 @@ function findNearestTargetDirection(
   grid: Grid,
   snakeId: CellOwner.Snake1 | CellOwner.Snake2
 ): Direction | null {
+  // Two-pass BFS: first try to find unpainted cells (CellOwner.None),
+  // then fall back to enemy cells if no unpainted cells exist.
+  // This prevents the snake from being drawn toward nearby enemy territory
+  // when distant unpainted cells still exist.
+  const result = bfsToTarget(pos, grid, snakeId, true);
+  if (result) return result;
+  return bfsToTarget(pos, grid, snakeId, false);
+}
+
+/**
+ * BFS helper for findNearestTargetDirection.
+ * When unpaintedOnly is true, only CellOwner.None cells are targets.
+ * When false, any non-own cell is a target (enemy or unpainted).
+ */
+function bfsToTarget(
+  pos: Position,
+  grid: Grid,
+  snakeId: CellOwner.Snake1 | CellOwner.Snake2,
+  unpaintedOnly: boolean
+): Direction | null {
   const visited = new Set<string>();
-  // Each entry tracks position, depth, and the direction of the FIRST step
   const queue: { pos: Position; depth: number; firstDir: Direction }[] = [];
   let queueHead = 0;
 
@@ -451,8 +471,10 @@ function findNearestTargetDirection(
     visited.add(key);
 
     const owner = grid.cells[next.x][next.y].owner;
-    // Found a target immediately adjacent
-    if (owner !== snakeId) {
+    const isTarget = unpaintedOnly
+      ? owner === CellOwner.None
+      : owner !== snakeId;
+    if (isTarget) {
       return dir;
     }
 
@@ -471,8 +493,10 @@ function findNearestTargetDirection(
       visited.add(key);
 
       const owner = grid.cells[next.x][next.y].owner;
-      // Found a target: return the first step direction that led here
-      if (owner !== snakeId) {
+      const isTarget = unpaintedOnly
+        ? owner === CellOwner.None
+        : owner !== snakeId;
+      if (isTarget) {
         return firstDir;
       }
 
