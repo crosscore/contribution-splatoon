@@ -2,54 +2,23 @@
 
 # contribution-gallery
 
-**A gallery of animations for your GitHub contribution graph — a Splatoon-style territory battle, plus nine ambient scenes.**
+**A living canvas for your GitHub profile.**
 
-<img src="docs/splatoon-dark.svg" alt="contribution-gallery demo" width="720" />
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/ambient-dark.svg" />
+  <source media="(prefers-color-scheme: light)" srcset="docs/ambient.svg" />
+  <img src="docs/ambient-dark.svg" alt="Nine colorful animations across a GitHub contribution graph" width="753" />
+</picture>
 
-*Inspired by [Splatoon](https://en.wikipedia.org/wiki/Splatoon) — two AI snakes race across your contribution graph, painting territory and stealing each other's ground.*
+Nine ambient scenes. Colorful pixel cards. Your work, in motion.
 
 [![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 </div>
 
----
+## Ambient gallery
 
-## What is this?
-
-A GitHub Action that generates an animated SVG of two snakes battling for territory on your GitHub contribution graph — like a Splatoon ink battle.
-
-Unlike the classic [Platane/snk](https://github.com/Platane/snk) (single snake eating cells), this project features:
-
-- **Two competing snakes** — starting from opposite corners of the grid
-- **Territory painting** — each snake claims cells in Hot Pink or Cyan
-- **Competitive AI** — 9 heuristic factors + stagnation-aware ε-greedy exploration
-- **Score display** — live territory percentage bar
-- **Dark mode support** — separate palettes for light/dark themes
-
-## How it Works
-
-Each snake evaluates moves using a **multi-factor scoring system** that balances local efficiency with global exploration:
-
-| Factor | Weight | Purpose |
-|--------|--------|---------|
-| Distance-decayed BFS | variable | Prioritize nearby unpainted cells |
-| Frontier bonus | +15 | Reward painting fresh ground |
-| Global compass | +10 | Head toward unexplored regions |
-| Opponent avoidance | +10/−8 | Separate snakes for coverage |
-| Escape route check | −5/−20 | Avoid dead-ends |
-| Long-range navigation | +30/−10 | March toward nearest target when stuck |
-| Loop detection | force random | Break positional cycles |
-| Stagnation ε-greedy | 0.5%→15% | Increasing randomness when stuck |
-
-This achieves **100% grid coverage** with natural variation in territory split.
-
-**[→ Full algorithm documentation](docs/ALGORITHM.md)**
-
-## ✨ Ambient Mode
-
-An alternative renderer: nine quiet, cell-based animation scenes rotate every 15 seconds on one seamless loop — no reset, no pause.
-
-<img src="docs/ambient-dark.svg" alt="ambient mode demo" width="720" />
+Nine colorful, cell-based animation scenes rotate every 15 seconds on one seamless loop — no reset, no pause.
 
 | Scene | Description |
 |-------|-------------|
@@ -96,20 +65,24 @@ The endpoint renders the SVG with a random seed per request and sends `Cache-Con
 
 ### 📊 Profile cards (stats, langs, streak, trophy)
 
-Four more endpoints render matching profile cards in the same design language — rounded contribution cells, quiet keyframe loops, the ambient palette:
+Four endpoints share a dark-first visual system: fine borders, consistent spacing, clear typography, and colorful animated pixels.
 
-- `GET /api/stats` — five all-time stats (commits, stars, PRs, issues, followers), each with a shimmering pixel icon and a gradient number
-- `GET /api/langs` — top languages as bars of contribution cells in GitHub's language colors, a band of light periodically sweeping along each bar (colors too dark or too light for the card background are auto-adjusted for contrast)
-- `GET /api/streak` — total contributions, current streak (a pixel-art flame that shimmers cell by cell, breathes a warm glow and sheds drifting embers) and longest streak
-- `GET /api/trophy` — seven ranked achievement badges (commits, followers, stars, repos, PRs, issues, reviews), each a pixel trophy cup with side handles and a diagonal glint sweep — S-tier badges twinkle with sparkles
+| Endpoint | Card |
+|----------|------|
+| `/api/stats` | A prominent commit total and four supporting metrics with shimmering pixel icons |
+| `/api/langs` | Language-colored cell bars with a traveling shimmer and exact byte-share percentages |
+| `/api/streak` | All-time contributions, current and longest streaks, and a glowing pixel flame |
+| `/api/trophy` | Seven ranked pixel trophies with glints and S-tier sparkles |
 
-All accept `?theme=dark`. The streak and trophy cards share the ambient graph's 753px width; the stats and langs cards are 375px each, so the pair sits side by side at the same total width — the whole profile stacks cleanly. Their numbers come from [docs/stats.json](docs/stats.json) — all-time totals, streaks and per-language byte counts aggregated daily by CI (`npx tsx src/cli-stats.ts --user <name>`), so no GitHub token is needed at request time.
+Use `?theme=dark` for the dark palette; the default API palette remains light for existing embeds. The ambient, streak, and trophy cards are 753px wide. The stats and languages cards are 375 × 256px; embed each at `width="369"` to fit them side by side with a small gap, and let them wrap on narrow screens. All images have self-contained SVG/CSS animations, accessible descriptions, and reduced-motion fallbacks. The nine ambient scenes keep their original colors and shuffled order.
+
+Numbers come from [docs/stats.json](docs/stats.json), refreshed by CI every six hours. Language percentages describe the indexed language bytes in that snapshot; bars are linear relative to the largest language. No GitHub token is needed at request time.
 
 ## Quick Start
 
 ```yaml
-# .github/workflows/splatoon.yml
-name: Generate Splatoon Animation
+# .github/workflows/contribution-gallery.yml
+name: Generate Contribution Gallery
 
 on:
   schedule:
@@ -127,8 +100,8 @@ jobs:
         with:
           github_user_name: ${{ github.repository_owner }}
           outputs: |
-            dist/splatoon.svg
-            dist/splatoon-dark.svg?palette=dark
+            dist/ambient.svg?mode=ambient
+            dist/ambient-dark.svg?palette=dark&mode=ambient
 
       - uses: crazy-max/ghaction-github-pages@v4
         with:
@@ -142,13 +115,47 @@ Then add to your profile README:
 
 ```html
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/<user>/<user>/output/splatoon-dark.svg" />
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/<user>/<user>/output/splatoon.svg" />
-  <img alt="contribution-gallery" src="https://raw.githubusercontent.com/<user>/<user>/output/splatoon-dark.svg" />
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/<user>/<user>/output/ambient-dark.svg" />
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/<user>/<user>/output/ambient.svg" />
+  <img alt="contribution-gallery" src="https://raw.githubusercontent.com/<user>/<user>/output/ambient-dark.svg" />
 </picture>
 ```
 
-## Customization
+<details>
+<summary>Optional territory battle and customization</summary>
+
+### Territory battle
+
+A GitHub Action that generates an animated SVG of two snakes battling for territory on your GitHub contribution graph — like a Splatoon ink battle.
+
+Unlike the classic [Platane/snk](https://github.com/Platane/snk) (single snake eating cells), this project features:
+
+- **Two competing snakes** — starting from opposite corners of the grid
+- **Territory painting** — each snake claims cells in Hot Pink or Cyan
+- **Competitive AI** — 9 heuristic factors + stagnation-aware ε-greedy exploration
+- **Score display** — live territory percentage bar
+- **Dark mode support** — separate palettes for light/dark themes
+
+### How it works
+
+Each snake evaluates moves using a **multi-factor scoring system** that balances local efficiency with global exploration:
+
+| Factor | Weight | Purpose |
+|--------|--------|---------|
+| Distance-decayed BFS | variable | Prioritize nearby unpainted cells |
+| Frontier bonus | +15 | Reward painting fresh ground |
+| Global compass | +10 | Head toward unexplored regions |
+| Opponent avoidance | +10/−8 | Separate snakes for coverage |
+| Escape route check | −5/−20 | Avoid dead-ends |
+| Long-range navigation | +30/−10 | March toward nearest target when stuck |
+| Loop detection | force random | Break positional cycles |
+| Stagnation ε-greedy | 0.5%→15% | Increasing randomness when stuck |
+
+This achieves **100% grid coverage** with natural variation in territory split.
+
+**[→ Full algorithm documentation](docs/ALGORITHM.md)**
+
+### Customization
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -158,6 +165,8 @@ Then add to your profile README:
 | `color_trail_2` | `#5DD4FF` | Light Cyan — Snake 2 trail |
 | `speed` | `1` | Animation speed multiplier |
 | `strategy` | `aggressive` | AI strategy: `aggressive`, `balanced`, `random` |
+
+</details>
 
 ## Architecture
 
@@ -172,6 +181,7 @@ src/
 │   ├── grid.ts       # Contribution grid rendering
 │   ├── animation.ts  # Keyframe animation engine (splatoon battle)
 │   ├── ambient.ts    # Ambient mode — nine scenes rotating every 15s
+│   ├── theme.ts      # Shared surfaces, typography and accessible SVG framing
 │   ├── stats.ts      # Stats card — pixel icons + gradient numbers
 │   ├── langs.ts      # Top languages card — cell bars in language colors
 │   ├── streak.ts     # Streak card — pixel flame + all-time streaks
@@ -194,7 +204,9 @@ api/
 
 ```bash
 npm install
-npm run dev        # Local dev server with live preview
+npm run preview    # Browser preview at http://127.0.0.1:4173 (dark by default)
+npm run render:examples # Regenerate ambient SVGs from docs/grid.json
+npm run type-check # Check TypeScript
 npm run build      # Build the GitHub Action
 npm run test       # Run tests
 ```

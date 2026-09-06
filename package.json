@@ -6,6 +6,8 @@
   "scripts": {
     "build": "tsx scripts/build.ts",
     "dev": "tsx src/cli.ts",
+    "preview": "tsx watch --include 'src/**/*.ts' --include 'docs/*.json' scripts/preview.ts",
+    "render:examples": "tsx scripts/preview.ts --write",
     "test": "jest --verbose",
     "type-check": "tsc --noEmit"
   },

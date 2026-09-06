@@ -28,6 +28,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate renderers
+        run: |
+          npm run type-check
+          npm test -- --runInBand
+
       # The calendar/profile queries use GITHUB_TOKEN on purpose: an anonymous
       # viewer sees ALL private activity as anonymised counts (profile setting),
       # while a user token only sees the repos it can access. Only the review

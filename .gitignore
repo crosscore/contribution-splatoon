@@ -7,3 +7,5 @@ coverage/
 .env
 *.svg
 !docs/*.svg
+output/
+.playwright-cli/
