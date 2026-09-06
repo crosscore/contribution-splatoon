@@ -7,7 +7,8 @@
     .heading{font-size:18px;font-weight:600;letter-spacing:-.4px;fill:#253640}
     .label{font-size:12px;fill:#5d707c}
     .detail{font-size:10.5px;fill:#5d707c}
-    .number{font-family:ui-monospace,SFMono-Regular,Consolas,'Liberation Mono',monospace;font-weight:500;letter-spacing:-1px;font-variant-numeric:tabular-nums;fill:#253640}
+    .number{font-family:ui-monospace,SFMono-Regular,Consolas,'Liberation Mono',monospace;font-weight:500;letter-spacing:-1px;font-variant-numeric:tabular-nums}
+    .number{fill:#253640}
     .motion{animation:shimmer 7s ease-in-out infinite}
     @keyframes shimmer{0%,100%{opacity:.65}50%{opacity:1}}
     @media(prefers-reduced-motion:reduce){.motion{animation:none}}
