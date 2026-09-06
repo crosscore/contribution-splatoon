@@ -78,6 +78,8 @@ Use `?theme=dark` for the dark palette; the default API palette remains light fo
 
 Numbers come from [docs/stats.json](docs/stats.json), refreshed by CI every six hours. Language percentages describe the indexed language bytes in that snapshot; bars are linear relative to the largest language. No GitHub token is needed at request time.
 
+Profile numbers and language percentages use **Inter** by default. Choose `font=outfit` for rounder numerals, `font=space` for Space Grotesk, or `font=mono` for the original style; for example, `/api/stats?theme=dark&font=inter`. The three bundled typefaces embed only their numeric glyphs, so they render consistently without external font requests. Switch between all four styles in `npm run preview`. Font sources and licenses are in [src/renderer/fonts](src/renderer/fonts).
+
 ## Quick Start
 
 ```yaml
@@ -213,5 +215,4 @@ npm run test       # Run tests
 
 ## License
 
-MIT
-
+Code: MIT. Bundled numeric fonts: SIL Open Font License 1.1; see [font licenses](src/renderer/fonts).

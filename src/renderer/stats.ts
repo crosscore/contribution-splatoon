@@ -1,8 +1,9 @@
 import { UserStats } from "../types";
+import { DEFAULT_NUMERAL_FONT, NumeralFont } from "./numerals";
 import { cardSvg, galleryTheme, HALF_HEIGHT, HALF_WIDTH, number, numberSize, pixelMark } from "./theme";
 
 /** One primary metric and four supporting totals; readable even without animation. */
-export function renderStatsSVG(stats: UserStats, dark: boolean): string {
+export function renderStatsSVG(stats: UserStats, dark: boolean, font: NumeralFont = DEFAULT_NUMERAL_FONT): string {
   const theme = galleryTheme(dark);
   const commits = number(stats.commits);
   const colors = dark ? ["#fbc65b", "#bc98ff", "#70c9ff", "#f78fba"] : ["#a86b09", "#8250df", "#0969da", "#bf3989"];
@@ -39,5 +40,5 @@ export function renderStatsSVG(stats: UserStats, dark: boolean): string {
     <circle cx="28" cy="123" r="3" fill="${theme.accent}"/>
     <text class="label" x="39" y="127">commits · all time</text>
     <path d="M24 144.5H351" stroke="${theme.border}"/>
-    ${metrics}`, `.metric-pixel{animation:pixel-glow 4s ease-in-out infinite}@keyframes pixel-glow{0%,100%{opacity:.6}50%{opacity:1}}@media(prefers-reduced-motion:reduce){.metric-pixel{animation:none}}`);
+    ${metrics}`, `.metric-pixel{animation:pixel-glow 4s ease-in-out infinite}@keyframes pixel-glow{0%,100%{opacity:.6}50%{opacity:1}}@media(prefers-reduced-motion:reduce){.metric-pixel{animation:none}}`, font);
 }

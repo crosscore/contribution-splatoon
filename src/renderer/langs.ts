@@ -1,4 +1,5 @@
 import { UserStats } from "../types";
+import { DEFAULT_NUMERAL_FONT, NumeralFont } from "./numerals";
 import { cardSvg, escapeXml, galleryTheme, HALF_HEIGHT, HALF_WIDTH } from "./theme";
 
 /** GitHub language colors, adjusted only when they disappear on the surface. */
@@ -14,7 +15,7 @@ function visibleColor(color: string | null, dark: boolean, fallback: string): st
 }
 
 /** Cell bars use a linear scale relative to the leading language. */
-export function renderLangsSVG(stats: UserStats, dark: boolean): string {
+export function renderLangsSVG(stats: UserStats, dark: boolean, font: NumeralFont = DEFAULT_NUMERAL_FONT): string {
   const theme = galleryTheme(dark);
   const languages = (stats.languages ?? []).filter(l => Number.isFinite(l.size) && l.size > 0);
   const total = languages.reduce((sum, l) => sum + l.size, 0);
@@ -31,7 +32,7 @@ export function renderLangsSVG(stats: UserStats, dark: boolean): string {
     return `<g><title>${escapeXml(lang.name)}</title>
       <text x="24" y="${y}" font-size="11.5" fill="${theme.text}">${escapeXml(name)}</text>
       ${cells}
-      <text class="detail" x="351" y="${y}" text-anchor="end" style="font-variant-numeric:tabular-nums">${(lang.size / total * 100).toFixed(1)}%</text>
+      <text class="detail numeric-detail" x="351" y="${y}" text-anchor="end" style="font-variant-numeric:tabular-nums">${(lang.size / total * 100).toFixed(1)}%</text>
     </g>`;
   }).join("\n");
   const summary = shown.length ? shown.map(l => `${l.name} ${(l.size / total * 100).toFixed(1)}%`).join(", ") : "No language data yet";
@@ -41,5 +42,5 @@ export function renderLangsSVG(stats: UserStats, dark: boolean): string {
     <text class="heading" x="24" y="54">Top Languages</text>
     ${shown.slice(0, 4).map((lang, i) => `<rect x="${334 + (i % 2) * 9}" y="${28 + Math.floor(i / 2) * 9}" width="6" height="6" rx="1.5" fill="${visibleColor(lang.color, dark, theme.muted)}"/>`).join("")}
     ${rows || `<text class="label" x="24" y="123">No language data yet.</text>`}
-    <text class="detail" x="24" y="247">Relative bars · % of indexed code</text>`, `.language-cell{animation:language-wave 4.8s ease-in-out infinite}@keyframes language-wave{0%,60%,100%{opacity:.78}80%{opacity:1}}@media(prefers-reduced-motion:reduce){.language-cell{animation:none}}`);
+    <text class="detail" x="24" y="247">Relative bars · % of indexed code</text>`, `.language-cell{animation:language-wave 4.8s ease-in-out infinite}@keyframes language-wave{0%,60%,100%{opacity:.78}80%{opacity:1}}@media(prefers-reduced-motion:reduce){.language-cell{animation:none}}`, font);
 }

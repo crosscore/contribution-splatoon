@@ -1,4 +1,5 @@
 import { UserStats } from "../types";
+import { DEFAULT_NUMERAL_FONT, NumeralFont } from "./numerals";
 import { CARD_WIDTH, cardSvg, galleryTheme, number, numberSize } from "./theme";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -16,7 +17,7 @@ function range(start: string, end: string, currentYear: string): string {
 }
 
 /** A living pixel flame is the focal point; the numbers themselves stay steady. */
-export function renderStreakSVG(stats: UserStats, dark: boolean): string {
+export function renderStreakSVG(stats: UserStats, dark: boolean, font: NumeralFont = DEFAULT_NUMERAL_FONT): string {
   const theme = galleryTheme(dark);
   const year = stats.generatedAt.slice(0, 4);
   const current = stats.currentStreak.days;
@@ -57,5 +58,5 @@ export function renderStreakSVG(stats: UserStats, dark: boolean): string {
     ${separators}${flame}${embers}${metrics}`,
     `.flame-cell{animation:flame-light 2.8s ease-in-out infinite}@keyframes flame-light{0%,100%{opacity:1}50%{opacity:.6}}
     .ember{animation:ember-rise 3.3s ease-out infinite;opacity:0}@keyframes ember-rise{0%{opacity:0;transform:translateY(0)}25%{opacity:.8}100%{opacity:0;transform:translateY(-19px)}}
-    @media(prefers-reduced-motion:reduce){.flame-cell{animation:none}.ember{display:none}}`);
+    @media(prefers-reduced-motion:reduce){.flame-cell{animation:none}.ember{display:none}}`, font);
 }

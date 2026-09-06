@@ -21,7 +21,7 @@ test.each([false, true])("cards retain data, accessible descriptions and valid n
     expect(svg).toContain('<desc id="description">');
     expect(svg).toContain('prefers-reduced-motion');
     expect(svg).not.toMatch(/NaN|Infinity|undefined/);
-    expect(svg).not.toMatch(/<script|<foreignObject|https?:\/\/(?!www.w3.org)/);
+    expect(svg).not.toMatch(/<script|<foreignObject|(?:href|src)\s*=\s*["']https?:\/\/|url\(\s*["']?https?:\/\//);
   }
   expect(renderStatsSVG(stats, dark)).toContain("4,000");
   expect(renderStreakSVG(stats, dark)).toContain("12,345");

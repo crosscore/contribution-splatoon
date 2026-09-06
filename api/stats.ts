@@ -1,4 +1,5 @@
 import { renderStatsSVG } from "../src/renderer/stats";
+import { resolveNumeralFont } from "../src/renderer/numerals";
 import { UserStats } from "../src/types";
 
 /**
@@ -8,6 +9,7 @@ import { UserStats } from "../src/types";
  *
  * Query params:
  *   theme=dark|light   palette selection (default: light)
+ *   font=outfit|inter|space|mono   numeric typeface (default: inter)
  */
 
 const STATS_URL =
@@ -68,5 +70,5 @@ export default async function handler(
 
   res.statusCode = 200;
   res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
-  res.end(renderStatsSVG(stats, dark));
+  res.end(renderStatsSVG(stats, dark, resolveNumeralFont(query.get("font"))));
 }

@@ -1,3 +1,5 @@
+import { NumeralFont, numeralCss, numeralLicense } from "./numerals";
+
 /** Shared visual language for self-contained GitHub profile SVGs. */
 export const CARD_WIDTH = 753;
 export const HALF_WIDTH = 375;
@@ -36,13 +38,14 @@ export function numberSize(value: string, preferred: number, width: number): num
   return Math.min(preferred, width / (value.length * 0.63));
 }
 
-export function galleryCss(theme: GalleryTheme): string {
+export function galleryCss(theme: GalleryTheme, font: NumeralFont = "mono"): string {
   return `text{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif}
     .eyebrow{font-size:10px;font-weight:600;letter-spacing:1.7px;fill:${theme.muted}}
     .heading{font-size:18px;font-weight:600;letter-spacing:-.4px;fill:${theme.text}}
     .label{font-size:12px;fill:${theme.muted}}
     .detail{font-size:10.5px;fill:${theme.muted}}
-    .number{font-family:ui-monospace,SFMono-Regular,Consolas,'Liberation Mono',monospace;font-weight:500;letter-spacing:-1px;font-variant-numeric:tabular-nums;fill:${theme.text}}
+    ${numeralCss(font)}
+    .number{fill:${theme.text}}
     .motion{animation:shimmer 7s ease-in-out infinite}
     @keyframes shimmer{0%,100%{opacity:.65}50%{opacity:1}}
     @media(prefers-reduced-motion:reduce){.motion{animation:none}}`;
@@ -53,11 +56,12 @@ export function cardSurface(width: number, height: number, theme: GalleryTheme):
 }
 
 export function cardSvg(title: string, description: string, width: number, height: number,
-  theme: GalleryTheme, body: string, css = ""): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="title description" data-design="gallery-v2">
+  theme: GalleryTheme, body: string, css = "", font: NumeralFont = "mono"): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="title description" data-design="gallery-v2" data-numeral-font="${font}">
   <title id="title">${escapeXml(title)}</title>
   <desc id="description">${escapeXml(description)}</desc>
-  <style>${galleryCss(theme)}${css}</style>
+  ${font === "mono" ? "" : `<metadata id="font-license">${escapeXml(numeralLicense(font))}</metadata>`}
+  <style>${galleryCss(theme, font)}${css}</style>
   ${cardSurface(width, height, theme)}
   ${body}
 </svg>\n`;

@@ -1,4 +1,5 @@
 import { UserStats } from "../types";
+import { DEFAULT_NUMERAL_FONT, NumeralFont } from "./numerals";
 import { CARD_WIDTH, cardSvg, galleryTheme, number, numberSize } from "./theme";
 
 const RANKS = ["SSS", "SS", "S", "AAA", "AA", "A", "B", "C"] as const;
@@ -19,7 +20,7 @@ function categories(stats: UserStats): Category[] {
 }
 
 /** Pixel trophies retain their color and glint, with more space around each badge. */
-export function renderTrophySVG(stats: UserStats, dark: boolean): string {
+export function renderTrophySVG(stats: UserStats, dark: boolean, font: NumeralFont = DEFAULT_NUMERAL_FONT): string {
   const theme = galleryTheme(dark);
   const cats = categories(stats);
   const badges = cats.map((cat, i) => {
@@ -50,5 +51,5 @@ export function renderTrophySVG(stats: UserStats, dark: boolean): string {
     <text class="detail" x="729" y="30" text-anchor="end">Seven milestones. Always growing.</text>
     ${badges}`, `.trophy-glint{opacity:0;animation:trophy-glint 7s linear infinite}@keyframes trophy-glint{0%,6%,15%,100%{opacity:0}10%{opacity:.65}}
       .sparkle{animation:sparkle 3.6s ease-in-out infinite}@keyframes sparkle{0%,100%{opacity:.12}50%{opacity:.9}}
-      @media(prefers-reduced-motion:reduce){.trophy-glint{display:none}.sparkle{animation:none;opacity:.5}}`);
+      @media(prefers-reduced-motion:reduce){.trophy-glint{display:none}.sparkle{animation:none;opacity:.5}}`, font);
 }
